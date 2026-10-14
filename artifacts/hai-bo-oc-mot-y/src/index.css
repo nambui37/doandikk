@@ -266,3 +266,73 @@ h1,h2,h3,p { margin-top:0; }
   .play-actions {flex-wrap:wrap}
   .play-actions button {flex:1}
 }
+
+/* Online rooms extend the tabletop game without changing its original visual language. */
+.mode-picker { width:min(930px,100%); margin:auto; display:grid; grid-template-columns:.9fr 1.1fr; gap:clamp(30px,6vw,80px); align-items:center; }
+.mode-panel { padding:clamp(22px,4vw,38px); border:1px solid rgba(211,219,240,.14); border-radius:26px; background:rgba(25,29,44,.92); box-shadow:0 24px 70px rgba(0,0,0,.32); }
+.mode-panel h2 {font-size:24px;letter-spacing:-.04em;margin:0 0 8px}
+.mode-panel p {color:#aeb4c5;font-size:13px;line-height:1.55;margin:0 0 22px}
+.play-mode-option {width:100%;display:flex;align-items:center;gap:15px;text-align:left;padding:17px;margin-top:10px;border:1px solid #393f53;border-radius:16px;background:#1a1f30;color:#f8f0df;transition:transform .18s,border-color .18s,background .18s}
+.play-mode-option:hover {transform:translateY(-2px);border-color:#55d3bf;background:#20283a}
+.play-mode-option .mode-icon {flex:none}
+.play-mode-option strong,.play-mode-option small {display:block}
+.play-mode-option strong {font-size:14px}
+.play-mode-option small {color:#9ba3b8;font-size:11px;margin-top:4px}
+.online-wrap {width:min(900px,100%);margin:auto;display:grid;grid-template-columns:.78fr 1.22fr;gap:24px;align-items:stretch}
+.online-aside {padding:30px 10px 30px 0}
+.online-aside h1 {font-size:clamp(40px,6vw,66px);line-height:.94;letter-spacing:-.06em;margin:18px 0}
+.online-aside h1 span {color:#f7d55c}
+.online-aside p {max-width:350px;color:#aeb4c5;font-size:14px;line-height:1.6}
+.online-panel {padding:clamp(22px,4vw,34px);border:1px solid rgba(211,219,240,.15);border-radius:24px;background:rgba(25,29,44,.94);box-shadow:0 24px 70px rgba(0,0,0,.32)}
+.online-tabs {display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:5px;border-radius:13px;background:#171b29;margin-bottom:23px}
+.online-tab {border:0;border-radius:10px;padding:10px;background:transparent;color:#9ba3b8;font-size:12px;font-weight:800}
+.online-tab.active {background:#f7d55c;color:#171a25}
+.online-field {display:block;margin:0 0 17px;color:#bac0d1;font-size:12px;font-weight:700}
+.online-field input,.online-field select {display:block;width:100%;height:48px;margin-top:8px;border:1px solid #3a4054;background:#1a1f30;border-radius:12px;padding:0 13px;color:#f8f0df;outline:none}
+.online-field input:focus,.online-field select:focus {border-color:#f7d55c;box-shadow:0 0 0 3px rgba(247,213,92,.11)}
+.room-code-input {font:700 23px var(--app-font-mono)!important;letter-spacing:.24em;text-transform:uppercase}
+.online-back {border:0;background:transparent;color:#aeb4c5;padding:10px 0;font-size:12px;font-weight:700}
+.online-back:hover {color:#f7d55c}
+.online-error {padding:11px 13px;border-radius:11px;background:rgba(238,111,94,.1);border:1px solid rgba(238,111,94,.24);color:#ffb09f;font-size:12px;line-height:1.45;margin:0 0 15px}
+.room-shell {width:min(920px,100%);margin:auto}
+.room-topline {display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;color:#a9b0c2;font:11px var(--app-font-mono);letter-spacing:.1em;text-transform:uppercase}
+.connection-state {display:inline-flex;align-items:center;gap:7px;color:#55d3bf}
+.connection-state::before {content:'';width:7px;height:7px;border-radius:50%;background:#55d3bf;box-shadow:0 0 0 4px rgba(85,211,191,.12)}
+.room-code {font:700 clamp(31px,7vw,48px) var(--app-font-mono);letter-spacing:.19em;color:#f7d55c}
+.room-code-panel {text-align:center;padding:25px;border:1px dashed rgba(247,213,92,.38);border-radius:18px;background:rgba(247,213,92,.055);margin:18px 0}
+.room-code-panel p {margin:10px 0 0;color:#aeb4c5;font-size:12px}
+.copy-btn {border:1px solid #4a526a;background:#292e41;color:#e8eaf1;border-radius:10px;padding:9px 13px;font-size:11px;font-weight:700}
+.copy-btn:hover {border-color:#55d3bf}
+.room-players {display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.room-player {min-height:92px;padding:15px;border:1px solid #373d52;background:#202538;border-radius:15px}
+.room-player small {display:block;color:#8f97ab;font:10px var(--app-font-mono);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.room-player strong {font-size:16px}
+.room-player.waiting {border-style:dashed;color:#8f97ab}
+.room-message {display:flex;align-items:center;gap:10px;color:#aeb4c5;padding:12px 0;font-size:12px}
+.room-message svg {width:16px;height:16px;color:#f7d55c;flex:none}
+.online-status-card {text-align:center;padding:34px 24px}
+.online-status-card h1 {font-size:clamp(34px,6vw,52px);letter-spacing:-.05em;margin:16px 0 10px}
+.online-status-card p {max-width:440px;margin:0 auto 23px;color:#aeb4c5;line-height:1.6;font-size:13px}
+.online-playing {width:min(1050px,100%);margin:auto;padding:6px 24px 34px}
+.online-role-banner {display:flex;align-items:center;gap:10px;padding:12px 15px;border-radius:13px;margin-bottom:15px;background:rgba(85,211,191,.09);border:1px solid rgba(85,211,191,.2);color:#a5eee0;font-size:12px;font-weight:700}
+.online-role-banner.guesser {background:rgba(247,213,92,.08);border-color:rgba(247,213,92,.2);color:#f8e6a2}
+.remote-drawing {pointer-events:none;opacity:.93}
+.online-result-note {color:#aeb4c5;font-size:13px;line-height:1.5}
+.skeleton-line {height:13px;border-radius:9px;background:linear-gradient(90deg,#272c3e,#363c50,#272c3e);animation:shimmer 1.5s ease-in-out infinite}
+@keyframes shimmer {50%{opacity:.48}}
+.spin {animation:spin 1s linear infinite}
+@keyframes spin {to{transform:rotate(360deg)}}
+@media(max-width:760px) {
+ .mode-picker,.online-wrap {grid-template-columns:1fr;gap:12px}
+ .mode-picker {padding-top:15px}
+ .online-aside {padding:10px 0}
+ .online-aside h1 {font-size:48px;margin:12px 0}
+ .online-aside p {margin-bottom:0}
+ .online-playing {padding:4px 15px 24px}
+ .room-topline {align-items:flex-start;flex-direction:column}
+}
+@media(max-width:420px) {
+ .room-players {grid-template-columns:1fr}
+ .online-panel {padding:19px}
+ .room-code {letter-spacing:.12em}
+}

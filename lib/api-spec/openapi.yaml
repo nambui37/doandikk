@@ -24,13 +24,373 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /rooms:
+    post:
+      operationId: createRoom
+      tags: [rooms]
+      summary: Create a two-player room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomCreateInput"
+      responses:
+        "201":
+          description: Room created for the host
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomSession"
+        "400":
+          description: Invalid room settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+  /rooms/{roomCode}/join:
+    post:
+      operationId: joinRoom
+      tags: [rooms]
+      summary: Join a room by invite code
+      parameters:
+        - $ref: "#/components/parameters/RoomCode"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomJoinInput"
+      responses:
+        "200":
+          description: Joined room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomSession"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+        "409":
+          description: Room is full or already started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+  /rooms/{roomCode}:
+    get:
+      operationId: getRoomState
+      tags: [rooms]
+      summary: Get the current room state for this player
+      description: The secret prompt is returned only to the current clue-giver.
+      parameters:
+        - $ref: "#/components/parameters/RoomCode"
+      security:
+        - roomPlayerToken: []
+      responses:
+        "200":
+          description: Private room view for the authenticated player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomView"
+        "401":
+          description: Missing or invalid player token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+  /rooms/{roomCode}/actions:
+    post:
+      operationId: actOnRoom
+      tags: [rooms]
+      summary: Start, score, skip, pause, resume, or restart a room
+      parameters:
+        - $ref: "#/components/parameters/RoomCode"
+      security:
+        - roomPlayerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomActionInput"
+      responses:
+        "200":
+          description: Updated private room view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomView"
+        "400":
+          description: Action is invalid in the current room state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+        "401":
+          description: Missing or invalid player token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+        "403":
+          description: This player cannot perform that action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+  /rooms/{roomCode}/drawing:
+    put:
+      operationId: updateRoomDrawing
+      tags: [rooms]
+      summary: Synchronize the current drawing with the other player
+      parameters:
+        - $ref: "#/components/parameters/RoomCode"
+      security:
+        - roomPlayerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomDrawingInput"
+      responses:
+        "200":
+          description: Updated private room view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomView"
+        "400":
+          description: Drawing is invalid in the current room state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+        "401":
+          description: Missing or invalid player token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+        "403":
+          description: Only the current clue-giver can draw
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomError"
 components:
+  parameters:
+    RoomCode:
+      name: roomCode
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 6
+        maxLength: 6
+        pattern: "^[A-HJ-NP-Z2-9]{6}$"
   schemas:
     HealthStatus:
       type: object
+      additionalProperties: false
       properties:
         status:
           type: string
       required:
         - status
-
+    RoomCreateInput:
+      type: object
+      additionalProperties: false
+      properties:
+        playerName:
+          type: string
+          minLength: 1
+          maxLength: 18
+        category:
+          type: string
+          enum: ["Đời thường", "Phim & hoạt hình", "Ăn uống", "Hành động"]
+        mode:
+          type: string
+          enum: [talk, draw]
+      required: [playerName, category, mode]
+    RoomJoinInput:
+      type: object
+      additionalProperties: false
+      properties:
+        playerName:
+          type: string
+          minLength: 1
+          maxLength: 18
+      required: [playerName]
+    RoomActionInput:
+      type: object
+      additionalProperties: false
+      properties:
+        action:
+          type: string
+          enum: [start, correct, pass, pause, resume, restart]
+      required: [action]
+    RoomDrawingInput:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        strokes:
+          type: array
+          maxItems: 16
+          items:
+            $ref: "#/components/schemas/DrawingStroke"
+      required: [revision, strokes]
+    DrawingPoint:
+      type: object
+      additionalProperties: false
+      properties:
+        x:
+          type: number
+          minimum: 0
+          maximum: 1
+        y:
+          type: number
+          minimum: 0
+          maximum: 1
+      required: [x, y]
+    DrawingStroke:
+      type: object
+      additionalProperties: false
+      properties:
+        points:
+          type: array
+          minItems: 1
+          maxItems: 128
+          items:
+            $ref: "#/components/schemas/DrawingPoint"
+      required: [points]
+    RoomPlayer:
+      type: object
+      additionalProperties: false
+      properties:
+        index:
+          type: integer
+          minimum: 0
+          maximum: 1
+        name:
+          type: string
+        isHost:
+          type: boolean
+        online:
+          type: boolean
+      required: [index, name, isHost, online]
+    RoomView:
+      type: object
+      additionalProperties: false
+      properties:
+        roomCode:
+          type: string
+        status:
+          type: string
+          enum: [waiting, ready, playing, paused, results]
+        players:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/RoomPlayer"
+        category:
+          type: string
+          enum: ["Đời thường", "Phim & hoạt hình", "Ăn uống", "Hành động"]
+        mode:
+          type: string
+          enum: [talk, draw]
+        turnIndex:
+          type: integer
+          minimum: 0
+          maximum: 3
+        timeLeftSeconds:
+          type: integer
+          minimum: 0
+          maximum: 60
+        scores:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: integer
+            minimum: 0
+        correctThisTurn:
+          type: integer
+          minimum: 0
+        currentPrompt:
+          type: ["string", "null"]
+        drawingRevision:
+          type: integer
+          minimum: 0
+        drawingStrokes:
+          type: array
+          maxItems: 16
+          items:
+            $ref: "#/components/schemas/DrawingStroke"
+      required:
+        - roomCode
+        - status
+        - players
+        - category
+        - mode
+        - turnIndex
+        - timeLeftSeconds
+        - scores
+        - correctThisTurn
+        - currentPrompt
+        - drawingRevision
+        - drawingStrokes
+    RoomSession:
+      type: object
+      additionalProperties: false
+      properties:
+        roomCode:
+          type: string
+        playerToken:
+          type: string
+          minLength: 32
+        playerIndex:
+          type: integer
+          minimum: 0
+          maximum: 1
+        view:
+          $ref: "#/components/schemas/RoomView"
+      required: [roomCode, playerToken, playerIndex, view]
+    RoomError:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+      required: [error]
+  securitySchemes:
+    roomPlayerToken:
+      type: http
+      scheme: bearer

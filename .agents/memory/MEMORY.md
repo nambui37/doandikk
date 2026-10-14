@@ -1,0 +1,2 @@
+- [Two-device rooms](two-device-rooms.md) — preserve same-device play alongside the user-selected internet room-code mode.
+- [Generated client compiler libs](generated-client-compiler-libs.md) — keep DOM.Iterable available for generated request wrappers that use Headers.entries.
