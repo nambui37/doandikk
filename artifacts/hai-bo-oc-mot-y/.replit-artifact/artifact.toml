@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Hai Bộ Óc Một Ý"
+description = "A polished 3D local two-player party game where one player gives word clues and the other guesses against the clock, then they swap roles."
+version = "1.0.0"
+id = "artifacts/hai-bo-oc-mot-y"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18880
+
+[services.development]
+run = "pnpm --filter @workspace/hai-bo-oc-mot-y run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hai-bo-oc-mot-y", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/hai-bo-oc-mot-y/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18880"
+BASE_PATH = "/"
