@@ -40,7 +40,7 @@ app.all(['/api/rooms*', '/rooms*'], (req, res) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 

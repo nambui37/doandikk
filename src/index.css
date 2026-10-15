@@ -1816,3 +1816,466 @@ h1,h2,h3,p { margin-top:0; }
   font-weight: 700;
 }
 
+/* ============================================================
+   GARTIC PHONE HOME SCREEN (CHỌN AVATAR, ĐẶT TÊN, CAROUSEL)
+============================================================ */
+.gartic-home-screen {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 20%, #58167a 0%, #29053d 60%, #150121 100%);
+  background-image: radial-gradient(#6c1f96 1.5px, transparent 1.5px), radial-gradient(circle at 50% 20%, #58167a 0%, #29053d 60%, #150121 100%);
+  background-size: 24px 24px, 100% 100%;
+  padding: 16px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gartic-home-topbar {
+  width: min(980px, 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.gartic-lang-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.gartic-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: #d1c4e9;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gartic-back-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* LOGO BONG BÓNG 3D */
+.gartic-main-brand {
+  margin: 6px 0 24px;
+  text-align: center;
+}
+
+.gartic-bubble-logo {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo-text {
+  font-size: clamp(38px, 7vw, 64px);
+  font-weight: 1000;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  text-transform: uppercase;
+  text-shadow: 
+    0 4px 0 #3a0050,
+    0 8px 0 #200030,
+    0 14px 28px rgba(0, 0, 0, 0.6);
+  -webkit-text-stroke: 3px #180026;
+}
+
+.sub-logo-tag {
+  display: inline-block;
+  padding: 3px 14px;
+  border-radius: 20px;
+  background: #180026;
+  color: #f7d55c;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  margin-top: -6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* KHUNG 2 CỘT CHUẨN GARTIC PHONE */
+.gartic-setup-container {
+  width: min(960px, 100%);
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+/* CỘT PROFILE */
+.gartic-profile-card {
+  background: rgba(45, 9, 64, 0.92);
+  border: 3px solid #6b1b9a;
+  border-radius: 26px;
+  padding: 24px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+}
+
+.gartic-nav-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: #200530;
+  padding: 6px;
+  border-radius: 16px;
+  margin-bottom: 22px;
+}
+
+.gartic-nav-tab {
+  padding: 10px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: #b39ddb;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gartic-nav-tab.active {
+  background: #7b1fa2;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(123, 31, 162, 0.4);
+}
+
+.gartic-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gartic-avatar-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 16px;
+  border-radius: 20px;
+  border: 2px solid #511374;
+}
+
+/* VÒNG TRÒN AVATAR LỚN CÓ NÚT RANDOM */
+.gartic-big-avatar-wrapper {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.avatar-icon-char {
+  font-size: 46px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+}
+
+.gartic-random-avatar-btn {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f7d55c;
+  color: #1a0028;
+  border: 3px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s;
+}
+.gartic-random-avatar-btn:hover {
+  transform: rotate(90deg) scale(1.1);
+}
+
+.gartic-nickname-input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gartic-field-label {
+  font-size: 11px;
+  font-weight: 900;
+  color: #e1bee7;
+  letter-spacing: 0.05em;
+}
+
+.gartic-nickname-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 2px solid #7b1fa2;
+  background: #220333;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.gartic-nickname-input:focus {
+  border-color: #f7d55c;
+  box-shadow: 0 0 0 3px rgba(247, 213, 92, 0.25);
+}
+
+.gartic-room-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gartic-setting-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gartic-select-box, .gartic-code-input {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 2px solid #511374;
+  background: #200530;
+  color: #ffffff;
+  padding: 0 12px;
+  font-weight: 700;
+  outline: none;
+}
+.gartic-code-input {
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-family: var(--app-font-mono, monospace);
+  text-align: center;
+}
+
+.gartic-score-target-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.gartic-target-btn {
+  padding: 8px 6px;
+  border-radius: 12px;
+  border: 2px solid #511374;
+  background: #200530;
+  color: #d1c4e9;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.15s;
+}
+.gartic-target-btn strong {
+  font-size: 13px;
+}
+.gartic-target-btn small {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.gartic-target-btn.active {
+  border-color: #f7d55c;
+  background: rgba(247, 213, 92, 0.18);
+  color: #f7d55c;
+  box-shadow: 0 0 10px rgba(247, 213, 92, 0.2);
+}
+
+.gartic-error-banner {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* NÚT BẮT ĐẦU CHUẨN GARTIC PHONE */
+.gartic-start-play-btn {
+  width: 100%;
+  height: 56px;
+  border-radius: 20px;
+  border: 3px solid #1a0028;
+  background: #ffffff;
+  color: #3a0050;
+  font-size: 18px;
+  font-weight: 1000;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #b39ddb, 0 10px 24px rgba(0, 0, 0, 0.4);
+  transition: all 0.12s ease;
+  margin-top: 8px;
+}
+.gartic-start-play-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #b39ddb, 0 14px 28px rgba(0, 0, 0, 0.5);
+}
+.gartic-start-play-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #b39ddb, 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+.gartic-start-play-btn .play-icon {
+  color: #10b981;
+}
+
+.gartic-wake-notice {
+  font-size: 12px;
+  color: #f7d55c;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* CỘT CÁCH CHƠI & CAROUSEL */
+.gartic-tutorial-card {
+  background: rgba(45, 9, 64, 0.92);
+  border: 3px solid #6b1b9a;
+  border-radius: 26px;
+  padding: 24px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: space-between;
+}
+
+.gartic-tutorial-heading {
+  font-size: 16px;
+  font-weight: 1000;
+  color: #f7d55c;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gartic-tutorial-carousel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin: auto 0;
+}
+
+.gartic-tutorial-graphic {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(123, 31, 162, 0.3);
+  border: 3px solid #7b1fa2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.big-tut-emoji {
+  font-size: 52px;
+}
+
+.tutorial-step-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.tutorial-step-desc {
+  font-size: 13px;
+  color: #d1c4e9;
+  line-height: 1.55;
+  max-width: 260px;
+  margin-bottom: 20px;
+}
+
+.gartic-carousel-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.carousel-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #7b1fa2;
+  background: #200530;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.carousel-arrow:hover {
+  background: #7b1fa2;
+  transform: scale(1.1);
+}
+
+.carousel-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.carousel-dots .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #511374;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.carousel-dots .dot.active {
+  width: 20px;
+  border-radius: 8px;
+  background: #f7d55c;
+  box-shadow: 0 0 8px rgba(247, 213, 92, 0.6);
+}
+
+/* RESPONSIVE MOBILE CHO MÀN HÌNH SETUP */
+@media (max-width: 860px) {
+  .gartic-setup-container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .gartic-tutorial-card {
+    display: none; /* Ẩn bớt card hướng dẫn trên màn hình điện thoại để tập trung nhập tên */
+  }
+  .gartic-profile-card {
+    padding: 18px;
+  }
+}
+
+

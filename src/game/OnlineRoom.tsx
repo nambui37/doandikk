@@ -179,18 +179,33 @@ export default function OnlineRoom({ session, onExit }: Props) {
     }
   };
 
-  // Người đoán gửi câu trả lời
+  // Người đoán gửi câu trả lời (Phản hồi tức thì 0ms - Optimistic UI)
   const handleSendGuess = async (e?: FormEvent) => {
     if (e) e.preventDefault();
     const text = guessInput.trim();
     if (!text || isSubmitting) return;
 
+    // Hiển thị phản hồi ngay lập tức không cần chờ mạng
     setGuessInput('');
     setActionError(null);
+    setLastFeedback({ text: `Bạn: "${text}"`, isCorrect: false });
 
     try {
       const nextView = await apiGuessWord(roomCode, playerToken, text);
       setView(nextView);
+      if (nextView.lastGuessFeedback) {
+        setLastFeedback({
+          text: `${nextView.lastGuessFeedback.guesserName}: "${nextView.lastGuessFeedback.text}"`,
+          isCorrect: nextView.lastGuessFeedback.isCorrect,
+        });
+        if (nextView.lastGuessFeedback.isCorrect) {
+          confetti({
+            particleCount: 60,
+            spread: 75,
+            origin: { y: 0.6 },
+          });
+        }
+      }
     } catch (err: any) {
       setActionError(err?.message || 'Lỗi gửi câu trả lời.');
     }

@@ -9,6 +9,23 @@ import type {
 
 const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
+// Tự động đánh thức máy chủ ngầm (Cold Start Warm-Up) ngay khi người dùng vào web
+export function warmUpServer(): void {
+  try {
+    fetch(`${API_BASE}/health`, { method: 'GET', mode: 'cors' }).catch(() => {});
+  } catch {
+    // ignore
+  }
+}
+
+// Kích hoạt đánh thức server ngay lập tức
+warmUpServer();
+
+// Duy trì keep-alive mỗi 10 phút để server không bị ngủ
+if (typeof window !== 'undefined') {
+  setInterval(warmUpServer, 10 * 60 * 1000);
+}
+
 export async function apiCreateRoom(data: RoomCreateInput): Promise<RoomSession> {
   const res = await fetch(`${API_BASE}/rooms`, {
     method: 'POST',

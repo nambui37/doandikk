@@ -1,8 +1,8 @@
-import { ArrowRight, ArrowLeft, Globe2, LoaderCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Globe2, LoaderCircle, RotateCw, Play, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useState, useEffect, type FormEvent } from 'react';
 import { categories } from './words';
 import type { RoomCreateInput, RoomJoinInput, RoomSession } from './types';
-import { apiCreateRoom, apiJoinRoom } from '../lib/api';
+import { apiCreateRoom, apiJoinRoom, warmUpServer } from '../lib/api';
 
 type Props = {
   onSession: (session: RoomSession) => void;
@@ -10,14 +10,61 @@ type Props = {
 };
 type Mode = 'host' | 'join';
 
+// Danh sách các Avatar hoạt hình Gartic Phone phong phú
+const GARTIC_AVATARS = [
+  { id: 'knight', icon: '🛡️', bg: '#2b3a67', name: 'Hiệp sĩ' },
+  { id: 'dragon', icon: '🐉', bg: '#6b2d5c', name: 'Rồng tím' },
+  { id: 'penguin', icon: '🐧', bg: '#1f4e5b', name: 'Cánh cụt' },
+  { id: 'fox', icon: '🦊', bg: '#b45309', name: 'Cáo cam' },
+  { id: 'robot', icon: '🤖', bg: '#374151', name: 'Robot' },
+  { id: 'cat', icon: '🐱', bg: '#c026d3', name: 'Mèo cưng' },
+  { id: 'ninja', icon: '🥷', bg: '#111827', name: 'Ninja' },
+  { id: 'bear', icon: '🐻', bg: '#78350f', name: 'Gấu bự' },
+  { id: 'astronaut', icon: '🚀', bg: '#1e3a8a', name: 'Phi hành gia' },
+  { id: 'rabbit', icon: '🐰', bg: '#db2777', name: 'Thỏ ngọc' },
+  { id: 'wizard', icon: '🧙‍♂️', bg: '#4c1d95', name: 'Pháp sư' },
+  { id: 'lion', icon: '🦁', bg: '#d97706', name: 'Sư tử' },
+];
+
+const TUTORIAL_SLIDES = [
+  {
+    title: '1. NHẬN TỪ & VẼ (60s)',
+    desc: 'Một người sẽ nhận từ bí mật và có 60 giây trổ tài vẽ hình gợi ý cho bạn bè.',
+    icon: '🎨',
+  },
+  {
+    title: '2. TRANH NHAU ĐOÁN (20s)',
+    desc: 'Hết giờ vẽ, tất cả người đoán có 20 giây gõ đáp án. Máy tự động chấm điểm!',
+    icon: '⚡',
+  },
+  {
+    title: '3. THAY PHIÊN VÒNG TRÒN',
+    desc: 'Lượt tiếp theo người khác sẽ vẽ để bạn trổ tài đoán ý đồng đội.',
+    icon: '🔄',
+  },
+  {
+    title: '4. ĐỦ ĐIỂM LÀ CHIẾN THẮNG!',
+    desc: 'Đoán trúng được +1 điểm. Ai chạm mốc điểm mục tiêu trước sẽ giành cúp Vô địch 🏆!',
+    icon: '👑',
+  },
+];
+
 export default function OnlineSetup({ onSession, onBack }: Props) {
   const [mode, setMode] = useState<Mode>('host');
   const [name, setName] = useState('');
+  const [avatarIndex, setAvatarIndex] = useState(0);
   const [category, setCategory] = useState(categories[0] || 'Đồ vật quen thuộc');
   const [targetScore, setTargetScore] = useState<number>(5);
   const [roomCode, setRoomCode] = useState('');
   const [pending, setPending] = useState(false);
+  const [slowNotice, setSlowNotice] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  // Đánh thức server Render ngay từ lúc vào màn hình
+  useEffect(() => {
+    warmUpServer();
+  }, []);
 
   // Tự động nhận diện ?room=ABCDEF từ link mời của bạn bè
   useEffect(() => {
@@ -29,8 +76,11 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
     }
   }, []);
 
-  const canSubmit =
-    name.trim().length > 0 && (mode === 'host' || roomCode.trim().length === 6);
+  const currentAvatar = GARTIC_AVATARS[avatarIndex] || GARTIC_AVATARS[0];
+
+  const handleRandomAvatar = () => {
+    setAvatarIndex((prev) => (prev + 1) % GARTIC_AVATARS.length);
+  };
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -40,10 +90,13 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
       return;
     }
     setPending(true);
+    setSlowNotice(false);
     setError(null);
+    const timer = setTimeout(() => setSlowNotice(true), 1800);
+
     try {
       const data: RoomCreateInput = {
-        playerName: name.trim(),
+        playerName: `${currentAvatar.icon} ${name.trim()}`,
         category,
         targetScore,
       };
@@ -52,7 +105,9 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
     } catch (err: any) {
       setError(err?.message || 'Không thể tạo phòng lúc này. Hãy thử lại.');
     } finally {
+      clearTimeout(timer);
       setPending(false);
+      setSlowNotice(false);
     }
   };
 
@@ -68,166 +123,224 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
       return;
     }
     setPending(true);
+    setSlowNotice(false);
     setError(null);
+    const timer = setTimeout(() => setSlowNotice(true), 1800);
+
     try {
-      const data: RoomJoinInput = { playerName: name.trim() };
+      const data: RoomJoinInput = { playerName: `${currentAvatar.icon} ${name.trim()}` };
       const session = await apiJoinRoom(roomCode.trim().toUpperCase(), data);
       onSession(session);
     } catch (err: any) {
       setError(err?.message || 'Không thể vào phòng này. Hãy kiểm tra lại mã phòng.');
     } finally {
+      clearTimeout(timer);
       setPending(false);
+      setSlowNotice(false);
     }
   };
 
-  return (
-    <main className="screen">
-      <div className="online-wrap">
-        <aside className="online-aside fade-in">
-          <div className="eyebrow">
-            <Globe2 size={14} /> Chơi nhóm qua mạng (2 - 8 người)
-          </div>
-          <h1>
-            Vẽ cùng bạn bè,<br />
-            <span>đoán cực vui!</span>
-          </h1>
-          <p>
-            Mỗi lượt một người sẽ nhận từ bí mật để vẽ. Tất cả những người còn lại cùng tranh nhau đoán từ thật nhanh!
-          </p>
-          <button
-            className="online-back"
-            type="button"
-            onClick={onBack}
-          >
-            <ArrowLeft size={15} /> Quay lại trang chủ
-          </button>
-        </aside>
+  const nextSlide = () => {
+    setSlideIndex((prev) => (prev + 1) % TUTORIAL_SLIDES.length);
+  };
 
-        <section className="online-panel fade-in delay-1">
-          <div className="online-tabs" role="tablist">
+  const prevSlide = () => {
+    setSlideIndex((prev) => (prev - 1 + TUTORIAL_SLIDES.length) % TUTORIAL_SLIDES.length);
+  };
+
+  const currentSlide = TUTORIAL_SLIDES[slideIndex];
+
+  return (
+    <main className="gartic-home-screen">
+      {/* HEADER TOPBAR GARTIC PHONE */}
+      <header className="gartic-home-topbar">
+        <button type="button" className="gartic-lang-badge">
+          <Globe2 size={15} /> <span>VI</span>
+        </button>
+        <button type="button" className="gartic-back-btn" onClick={onBack}>
+          <ArrowLeft size={16} /> Quay lại
+        </button>
+      </header>
+
+      {/* LOGO GARTIC PHONE CHÍNH GIỮA */}
+      <div className="gartic-main-brand">
+        <div className="gartic-bubble-logo">
+          <span className="logo-text">ĐOÁN ĐỈNH</span>
+          <span className="sub-logo-tag">TAM SAO THẤT BẢN · VẼ TRANH ĐOÁN Ý</span>
+        </div>
+      </div>
+
+      {/* KHUNG NỘI DUNG 2 CỘT CHUẨN ẢNH MẪU */}
+      <div className="gartic-setup-container">
+        {/* CỘT BÊN TRÁI: CHỌN AVATAR & TÊN */}
+        <section className="gartic-profile-card">
+          {/* TABS CHẾ ĐỘ */}
+          <div className="gartic-nav-tabs">
             <button
               type="button"
-              className={`online-tab ${mode === 'host' ? 'active' : ''}`}
+              className={`gartic-nav-tab ${mode === 'host' ? 'active' : ''}`}
               onClick={() => {
                 setMode('host');
                 setError(null);
               }}
             >
-              Tạo phòng mới
+              TẠO PHÒNG MỚI
             </button>
             <button
               type="button"
-              className={`online-tab ${mode === 'join' ? 'active' : ''}`}
+              className={`gartic-nav-tab ${mode === 'join' ? 'active' : ''}`}
               onClick={() => {
                 setMode('join');
                 setError(null);
               }}
             >
-              Nhập mã vào phòng
+              NHẬP MÃ PHÒNG
             </button>
           </div>
 
-          <form onSubmit={mode === 'host' ? handleCreate : handleJoin}>
-            <label className="online-field">
-              Tên biệt danh của bạn
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                maxLength={18}
-                autoFocus
-                autoComplete="nickname"
-                placeholder="Ví dụ: Hoàng Hải"
-              />
-            </label>
+          <form onSubmit={mode === 'host' ? handleCreate : handleJoin} className="gartic-profile-form">
+            <div className="gartic-avatar-picker-row">
+              {/* AVATAR TRÒN LỚN CÓ NÚT RANDOM */}
+              <div className="gartic-big-avatar-wrapper" style={{ backgroundColor: currentAvatar.bg }}>
+                <span className="avatar-icon-char">{currentAvatar.icon}</span>
+                <button
+                  type="button"
+                  className="gartic-random-avatar-btn"
+                  onClick={handleRandomAvatar}
+                  title="Bấm để đổi avatar ngẫu nhiên"
+                >
+                  <RotateCw size={16} />
+                </button>
+              </div>
 
+              {/* Ô NHẬP TÊN BIỆT DANH */}
+              <div className="gartic-nickname-input-group">
+                <label className="gartic-field-label">CHỌN MỘT NHÂN VẬT VÀ BIỆT DANH</label>
+                <input
+                  className="gartic-nickname-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={16}
+                  autoFocus
+                  placeholder="Nhập biệt danh của bạn..."
+                />
+              </div>
+            </div>
+
+            {/* TÙY CHỌN RIÊNG CHO CHỦ PHÒNG HOẶC MÃ PHÒNG */}
             {mode === 'host' ? (
-              <>
-                <label className="online-field">
-                  Chủ đề từ vựng
+              <div className="gartic-room-settings">
+                <div className="gartic-setting-field">
+                  <label className="gartic-field-label">CHỦ ĐỀ TỪ KHÓA:</label>
                   <select
+                    className="gartic-select-box"
                     value={category}
-                    onChange={(event) => setCategory(event.target.value)}
+                    onChange={(e) => setCategory(e.target.value)}
                   >
-                    {categories.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
+                    {categories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
-                </label>
+                </div>
 
-                <div className="online-field" style={{ marginBottom: 16 }}>
-                  <span>Điểm số mục tiêu để chiến thắng</span>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 6 }}>
+                <div className="gartic-setting-field">
+                  <label className="gartic-field-label">MỤC TIÊU ĐIỂM THẮNG:</label>
+                  <div className="gartic-score-target-row">
                     {[
-                      { score: 3, label: '3 Điểm', sub: 'Ván nhanh' },
-                      { score: 5, label: '5 Điểm', sub: 'Tiêu chuẩn' },
-                      { score: 10, label: '10 Điểm', sub: 'Đua điểm' },
+                      { score: 3, label: '3 Điểm', desc: 'Ván nhanh' },
+                      { score: 5, label: '5 Điểm', desc: 'Tiêu chuẩn' },
+                      { score: 10, label: '10 Điểm', desc: 'Thách thức' },
                     ].map((item) => (
                       <button
                         key={item.score}
                         type="button"
+                        className={`gartic-target-btn ${targetScore === item.score ? 'active' : ''}`}
                         onClick={() => setTargetScore(item.score)}
-                        style={{
-                          padding: '10px 6px',
-                          borderRadius: 10,
-                          border: targetScore === item.score ? '2px solid #f7d55c' : '1px solid #2a2e3d',
-                          background: targetScore === item.score ? 'rgba(247, 213, 92, 0.15)' : '#181b24',
-                          color: targetScore === item.score ? '#f7d55c' : '#c8cddc',
-                          fontWeight: targetScore === item.score ? 700 : 500,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 2,
-                          transition: 'all 0.2s ease',
-                        }}
                       >
-                        <span style={{ fontSize: 14 }}>{item.label}</span>
-                        <small style={{ fontSize: 11, color: '#71798f' }}>{item.sub}</small>
+                        <strong>{item.label}</strong>
+                        <small>{item.desc}</small>
                       </button>
                     ))}
                   </div>
                 </div>
-              </>
+              </div>
             ) : (
-              <label className="online-field">
-                Mã phòng (gồm 6 ký tự)
-                <input
-                  className="room-code-input"
-                  value={roomCode}
-                  onChange={(event) =>
-                    setRoomCode(
-                      event.target.value.replace(/[^a-z0-9]/gi, '').slice(0, 6),
-                    )
-                  }
-                  maxLength={6}
-                  autoCapitalize="characters"
-                  placeholder="VD: 7K9MF2"
-                />
-              </label>
+              <div className="gartic-room-settings">
+                <div className="gartic-setting-field">
+                  <label className="gartic-field-label">MÃ PHÒNG (6 KÝ TỰ):</label>
+                  <input
+                    className="gartic-code-input"
+                    value={roomCode}
+                    onChange={(e) => setRoomCode(e.target.value.replace(/[^a-z0-9]/gi, '').slice(0, 6))}
+                    maxLength={6}
+                    autoCapitalize="characters"
+                    placeholder="VD: 7K9MF2"
+                  />
+                </div>
+              </div>
             )}
 
-            {error && <div className="online-error" role="alert">{error}</div>}
+            {error && <div className="gartic-error-banner">{error}</div>}
 
+            {/* NÚT BẮT ĐẦU CHUẨN GARTIC PHONE */}
             <button
               type="submit"
-              className="primary-btn full-btn"
+              className="gartic-start-play-btn"
               disabled={pending}
-              style={{ marginTop: 16 }}
             >
               {pending ? (
                 <>
-                  <LoaderCircle className="spin" /> Đang kết nối…
+                  <LoaderCircle className="spin" size={20} />
+                  <span>{slowNotice ? 'Đang đánh thức máy chủ (vài giây)...' : 'Đang xử lý…'}</span>
                 </>
               ) : (
                 <>
-                  {mode === 'host' ? 'Tạo phòng ngay' : 'Tham gia phòng'}{' '}
-                  <ArrowRight />
+                  <Play size={20} className="play-icon" />
+                  <span>{mode === 'host' ? 'BẮT ĐẦU' : 'VÀO PHÒNG'}</span>
                 </>
               )}
             </button>
+
+            {pending && slowNotice && (
+              <p className="gartic-wake-notice">
+                💡 Máy chủ miễn phí đang thức dậy từ chế độ ngủ, sau lần đầu này mọi thao tác sẽ phản hồi tức thì!
+              </p>
+            )}
           </form>
+        </section>
+
+        {/* CỘT BÊN PHẢI: CÁCH CHƠI & CAROUSEL HÌNH ẢNH */}
+        <section className="gartic-tutorial-card">
+          <h3 className="gartic-tutorial-heading">CÁCH CHƠI</h3>
+
+          <div className="gartic-tutorial-carousel">
+            <div className="gartic-tutorial-graphic">
+              <span className="big-tut-emoji">{currentSlide.icon}</span>
+            </div>
+
+            <h4 className="tutorial-step-title">{currentSlide.title}</h4>
+            <p className="tutorial-step-desc">{currentSlide.desc}</p>
+
+            <div className="gartic-carousel-controls">
+              <button type="button" className="carousel-arrow" onClick={prevSlide}>
+                <ChevronLeft size={22} />
+              </button>
+
+              <div className="carousel-dots">
+                {TUTORIAL_SLIDES.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`dot ${slideIndex === i ? 'active' : ''}`}
+                    onClick={() => setSlideIndex(i)}
+                  />
+                ))}
+              </div>
+
+              <button type="button" className="carousel-arrow" onClick={nextSlide}>
+                <ChevronRight size={22} />
+              </button>
+            </div>
+          </div>
         </section>
       </div>
     </main>

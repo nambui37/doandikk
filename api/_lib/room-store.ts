@@ -77,20 +77,56 @@ function removeVietnameseTones(str: string): string {
   return s.replace(/\s+/g, ' ').trim();
 }
 
-// Kiểm tra đoán trúng thông minh
+// Bản đồ đồng nghĩa phổ biến trong tiếng Việt
+const SYNONYMS_MAP: Record<string, string> = {
+  'non': 'mu',
+  'bat': 'to',
+  'ly': 'coc',
+  'my': 'mi',
+  'xe hoi': 'o to',
+};
+
+function normalizeSynonyms(str: string): string {
+  let s = str;
+  for (const [key, val] of Object.entries(SYNONYMS_MAP)) {
+    s = s.replace(new RegExp(`\\b${key}\\b`, 'g'), val);
+  }
+  return s;
+}
+
+// Kiểm tra đoán trúng thông minh (Hỗ trợ đảo từ "pin sạc" <-> "sạc pin", từ đồng nghĩa "nón" <-> "mũ")
 function checkCorrectGuess(guess: string, target: string): boolean {
   if (!guess || !target) return false;
-  const cleanGuess = removeVietnameseTones(guess);
-  const cleanTarget = removeVietnameseTones(target);
+  let cleanGuess = removeVietnameseTones(guess);
+  let cleanTarget = removeVietnameseTones(target);
 
   if (cleanGuess === cleanTarget) return true;
 
-  // Bỏ các mạo từ / tiền tố phổ biến trong tiếng Việt (con, cái, chiếc, quả, đôi, tô, bình...)
-  const prefixRegex = /^(cai|con|qua|trai|chiec|doi|ngon|to|bat|binh|chum|mieng|bong|cu|tia|hat)\s+/i;
+  // Chuẩn hóa từ đồng nghĩa (nón -> mũ, ly -> cốc, bát -> tô, mỳ -> mì...)
+  cleanGuess = normalizeSynonyms(cleanGuess);
+  cleanTarget = normalizeSynonyms(cleanTarget);
+
+  if (cleanGuess === cleanTarget) return true;
+
+  // Bỏ các mạo từ / tiền tố phổ biến trong tiếng Việt
+  const prefixRegex = /^(cai|con|qua|trai|chiec|doi|ngon|to|bat|binh|chum|mieng|bong|cu|tia|hat|cay)\s+/i;
   const strippedGuess = cleanGuess.replace(prefixRegex, '').trim();
   const strippedTarget = cleanTarget.replace(prefixRegex, '').trim();
 
   if (strippedGuess === strippedTarget && strippedGuess.length >= 2) return true;
+
+  // So khớp đảo từ (VD: "pin sạc" <-> "sạc pin")
+  const guessTokens = strippedGuess.split(/\s+/).filter(Boolean).sort().join(' ');
+  const targetTokens = strippedTarget.split(/\s+/).filter(Boolean).sort().join(' ');
+  if (guessTokens === targetTokens && guessTokens.length >= 2) return true;
+
+  // Nếu từ khóa có các từ con, người chơi gõ chứa đủ các từ con bất kể thứ tự
+  const targetWords = strippedTarget.split(/\s+/).filter(Boolean);
+  const guessWords = strippedGuess.split(/\s+/).filter(Boolean);
+  if (targetWords.length > 1 && guessWords.length === targetWords.length) {
+    const allMatch = targetWords.every(w => guessWords.includes(w));
+    if (allMatch) return true;
+  }
 
   return false;
 }
