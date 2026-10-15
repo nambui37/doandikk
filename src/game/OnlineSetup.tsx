@@ -18,18 +18,22 @@ import {
   Smile,
   Users,
   Flashlight,
+  Bot,
 } from 'lucide-react';
 import { AVATAR_LIST } from './Avatars';
 import Avatar3D from './Avatar3D';
 import FlashlightEyeOverlay from './FlashlightEyeOverlay';
 import InstallAppModal from './InstallAppModal';
+import AdminDashboardModal from './AdminDashboardModal';
 import { soundManager } from '../lib/soundManager';
+import { customWordManager } from '../lib/customWords';
 import type { GameMode, RoomCreateInput, RoomJoinInput, RoomSession } from './types';
 import { apiCreateRoom, apiJoinRoom, warmUpServer } from '../lib/api';
 
 type Props = {
   onSession: (session: RoomSession) => void;
   onBack: () => void;
+  onStartBotBattle?: (playerName: string, avatarIndex: number) => void;
 };
 
 type SetupStep = 'profile' | 'mode_select';
@@ -62,7 +66,7 @@ const TUTORIAL_SLIDES = [
   },
 ];
 
-export default function OnlineSetup({ onSession }: Props) {
+export default function OnlineSetup({ onSession, onStartBotBattle }: Props) {
   const [step, setStep] = useState<SetupStep>('profile');
   const [name, setName] = useState(() => localStorage.getItem('phone_player_name') || '');
   const [avatarIndex, setAvatarIndex] = useState(() => {
@@ -112,6 +116,39 @@ export default function OnlineSetup({ onSession }: Props) {
     return () => window.removeEventListener('pointermove', handleGlobalPointerMove);
   }, []);
 
+  // QUẢN TRỊ VIÊN ADMIN DASHBOARD BÍ MẬT
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const crownClicksRef = useRef<number[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+    return customWordManager.getCategoryNames()[0] || 'Đồ vật quen thuộc';
+  });
+
+  // Kích hoạt bí mật: Nhấn 5 lần vào vương miện hoàng gia trên logo
+  const handleCrownClick = () => {
+    const now = Date.now();
+    crownClicksRef.current = [...crownClicksRef.current.filter((t) => now - t < 3500), now];
+    if (crownClicksRef.current.length >= 5) {
+      crownClicksRef.current = [];
+      soundManager.playSuccess();
+      setIsAdminOpen(true);
+    } else {
+      soundManager.playPop();
+    }
+  };
+
+  // Kích hoạt bí mật: Tổ hợp phím Ctrl + Shift + A (hoặc Cmd + Shift + A trên Mac)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        soundManager.playSuccess();
+        setIsAdminOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const currentAvatar = AVATAR_LIST[avatarIndex] || AVATAR_LIST[0];
 
   const handleRandomAvatar = () => {
@@ -138,6 +175,15 @@ export default function OnlineSetup({ onSession }: Props) {
     setStep('mode_select');
   };
 
+  // VÀO CHẾ ĐỘ ĐẤU VỚI MÁY (BOT AI)
+  const handleStartBotBattle = () => {
+    soundManager.playPop();
+    const cleanName = name.trim() || 'Chiến thần';
+    localStorage.setItem('phone_player_name', cleanName);
+    localStorage.setItem('phone_user_avatar_idx', String(avatarIndex));
+    onStartBotBattle?.(cleanName, avatarIndex);
+  };
+
   // BƯỚC 2: TẠO PHÒNG MỚI
   const handleCreateRoom = async () => {
     if (pending) return;
@@ -157,7 +203,8 @@ export default function OnlineSetup({ onSession }: Props) {
       const data: RoomCreateInput = {
         playerName: cleanName,
         avatarIndex,
-        category: 'Đồ vật quen thuộc',
+        category: selectedCategory,
+        customWords: customWordManager.getWords(selectedCategory),
         targetScore,
         gameMode: selectedMode,
       };
@@ -234,8 +281,13 @@ export default function OnlineSetup({ onSession }: Props) {
           {/* HERO BANNER & LOGO: THƯƠNG HIỆU NAM PHONE VƯƠNG MIỆN VÀNG 3D */}
           <div className="gartic-hero-section">
             <div className="gartic-logo-master">
-              {/* Vương miện vàng 3D tỏa sáng trên chữ Nam */}
-              <div className="gartic-crown-wrap">
+              {/* Vương miện vàng 3D tỏa sáng trên chữ Nam (Bấm 5 lần mở Admin) */}
+              <div
+                className="gartic-crown-wrap"
+                onClick={handleCrownClick}
+                style={{ cursor: 'pointer' }}
+                title="Vương miện Nam Phone (Bấm 5 lần mở Bảng Điều Khiển Admin)"
+              >
                 <Crown size={30} className="golden-crown-svg" />
               </div>
 
@@ -323,6 +375,25 @@ export default function OnlineSetup({ onSession }: Props) {
                 >
                   <span className="green-play-arrow">▶</span>
                   <span className="start-button-text">BẮT ĐẦU</span>
+                </button>
+              </div>
+
+              {/* NÚT ĐẤU VỚI MÁY (BOT AI) - CHƠI 1 MÌNH */}
+              <div className="bot-battle-quick-entry">
+                <button
+                  type="button"
+                  className="gartic-bot-battle-button"
+                  onClick={handleStartBotBattle}
+                  title="Chơi ngay 1 mình cùng Robot AI thông minh"
+                >
+                  <div className="bot-btn-icon-wrapper">
+                    <Bot size={22} className="bot-icon-svg text-cyan-300" />
+                  </div>
+                  <div className="bot-btn-labels">
+                    <span className="bot-btn-main-title">🤖 ĐẤU VỚI MÁY (BOT AI)</span>
+                    <small className="bot-btn-subtitle">Solo 1 mình • Đoán hình cùng AI Nam-Bot</small>
+                  </div>
+                  <span className="bot-btn-play-tag">CHƠI NGAY ▶</span>
                 </button>
               </div>
 
@@ -639,6 +710,22 @@ export default function OnlineSetup({ onSession }: Props) {
                   </div>
                 </div>
 
+                {/* CHỦ ĐỀ TỪ KHÓA CHO PHÒNG */}
+                <div className="mode-category-select-block">
+                  <span className="selector-title">Chủ đề từ khóa ({customWordManager.getCategoryNames().length} chủ đề):</span>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="mode-category-dropdown"
+                  >
+                    {customWordManager.getCategoryNames().map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat} ({customWordManager.getWords(cat).length} từ)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <button
                   type="button"
                   className="mode-primary-submit-btn"
@@ -699,10 +786,41 @@ export default function OnlineSetup({ onSession }: Props) {
                   )}
                 </button>
               </div>
+
+              {/* LỰA CHỌN 3: ĐẤU MÁY VỚI BOT AI */}
+              <div className="mode-option-card bot-card">
+                <div className="mode-badge-tag bot-badge">CHƠI 1 MÌNH</div>
+                <h3 className="mode-card-title">Đấu với Robot AI</h3>
+                <p className="mode-card-description">
+                  Chơi ngay lập tức không cần chờ bạn bè, rèn luyện tài năng vẽ và suy luận cùng AI.
+                </p>
+
+                <div className="bot-card-perks-list">
+                  <div className="perk-bullet">⚡ 4 hiệp luân phiên đối kháng điểm số</div>
+                  <div className="perk-bullet">🎨 Bot tự vẽ nét hoạt họa mượt mà</div>
+                  <div className="perk-bullet">🧠 AI nhận diện nét vẽ thông minh</div>
+                </div>
+
+                <button
+                  type="button"
+                  className="mode-bot-submit-btn"
+                  onClick={handleStartBotBattle}
+                >
+                  <Bot size={20} />
+                  <span>VÀO ĐẤU MÁY NGAY</span>
+                  <ArrowRight size={20} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* BẢNG ĐIỀU KHIỂN QUẢN TRỊ VIÊN ADMIN DASHBOARD */}
+      <AdminDashboardModal
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+      />
     </div>
   );
 }

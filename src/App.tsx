@@ -8,6 +8,7 @@ import type { GameConfig } from '@/game/SetupScreen';
 import HandoffScreen from '@/game/HandoffScreen';
 import PlayScreen from '@/game/PlayScreen';
 import ResultsScreen from '@/game/ResultsScreen';
+import BotBattle from '@/game/BotBattle';
 import { wordBank } from '@/game/words';
 
 type Screen = 'setup' | 'reveal' | 'handoff' | 'playing' | 'cardReveal' | 'cardHandoff' | 'turnDone' | 'results';
@@ -33,6 +34,18 @@ function App() {
       return null;
     }
   });
+
+  // Chế độ Đấu Máy (Solo vs Bot AI)
+  const [botBattleData, setBotBattleData] = useState<{
+    active: boolean;
+    name: string;
+    avatarIndex: number;
+  }>({
+    active: false,
+    name: '',
+    avatarIndex: 0,
+  });
+
   const [turn, setTurn] = useState(0);
   const [seconds, setSeconds] = useState(60);
   const [scores, setScores] = useState<[number, number]>([0, 0]);
@@ -130,15 +143,34 @@ function App() {
     resetToSetup();
   }, [resetToSetup]);
 
+  // Ưu tiên 1: Chế độ Đấu Với Máy (Bot AI)
+  if (botBattleData.active) {
+    return (
+      <BotBattle
+        playerName={botBattleData.name || 'Chiến thần'}
+        playerAvatarIndex={botBattleData.avatarIndex}
+        onExit={() => setBotBattleData((prev) => ({ ...prev, active: false }))}
+      />
+    );
+  }
+
+  // Ưu tiên 2: Phòng chơi online qua mạng
   if (onlineSession) {
     return <OnlineRoom session={onlineSession} onExit={exitOnlineRoom} />;
   }
 
-  // Mặc định khi mới vào web: Luôn hiển thị giao diện Gartic Phone chính thức!
+  // Mặc định: Giao diện Gartic Phone chính thức
   return (
     <OnlineSetup
       onSession={enterOnlineRoom}
       onBack={() => {}}
+      onStartBotBattle={(pName, avIndex) =>
+        setBotBattleData({
+          active: true,
+          name: pName,
+          avatarIndex: avIndex,
+        })
+      }
     />
   );
 }

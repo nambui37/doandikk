@@ -78,6 +78,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
   const isHost = session.playerIndex === 0;
 
   const drawingRevision = useRef(session.view.drawingRevision || 0);
+  const prevTurnIndexRef = useRef(session.view.turnIndex);
   const p2pManagerRef = useRef<P2PManager | null>(null);
   const lastFeedbackTimestamp = useRef<number>(0);
   const drawingDebounceTimer = useRef<any>(null);
@@ -99,6 +100,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
           }));
         } else if (msg.type === 'CLEAR_DRAWING') {
           drawingRevision.current = msg.revision;
+          pendingStrokesRef.current = null;
           setView((prev) => ({
             ...prev,
             drawingRevision: msg.revision,
@@ -125,8 +127,19 @@ export default function OnlineRoom({ session, onExit }: Props) {
       try {
         const nextView = await apiGetRoomState(roomCode, playerToken);
         if (!isCancelled) {
+          // Khi chuyển sang lượt vẽ mới (hoặc vòng đấu mới):
+          if (nextView.turnIndex !== prevTurnIndexRef.current) {
+            prevTurnIndexRef.current = nextView.turnIndex;
+            drawingRevision.current = nextView.drawingRevision || 0;
+            pendingStrokesRef.current = null;
+            if (drawingDebounceTimer.current) {
+              clearTimeout(drawingDebounceTimer.current);
+            }
+          } else {
+            drawingRevision.current = Math.max(drawingRevision.current, nextView.drawingRevision);
+          }
+
           setView(nextView);
-          drawingRevision.current = Math.max(drawingRevision.current, nextView.drawingRevision);
 
           // Nhận diện khi có ai đó đoán đúng
           if (
@@ -174,6 +187,14 @@ export default function OnlineRoom({ session, onExit }: Props) {
 
     try {
       const nextView = await apiActOnRoom(roomCode, playerToken, action);
+      if (nextView.turnIndex !== prevTurnIndexRef.current) {
+        prevTurnIndexRef.current = nextView.turnIndex;
+        drawingRevision.current = nextView.drawingRevision || 0;
+        pendingStrokesRef.current = null;
+        if (drawingDebounceTimer.current) {
+          clearTimeout(drawingDebounceTimer.current);
+        }
+      }
       setView(nextView);
 
       if (action === 'start') {
@@ -689,6 +710,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
       {/* BẢNG VẼ CHUẨN GARTIC PHONE CÓ NÚT DONE! */}
       <section className="gartic-drawing-viewport">
         <OnlineDrawing
+          key={`online-drawing-${view.turnIndex}-${view.drawerIndex}`}
           strokes={view.drawingStrokes}
           revision={view.drawingRevision}
           canDraw={canDraw}

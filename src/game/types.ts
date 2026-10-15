@@ -127,6 +127,7 @@ export type RoomCreateInput = {
   targetScore?: number;
   gameMode?: GameMode;
   avatarIndex?: number;
+  customWords?: string[];
 };
 
 export type RoomJoinInput = {

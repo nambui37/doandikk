@@ -59,6 +59,7 @@ export default async function handler(req: any, res: any) {
           targetScore: Number(body.targetScore) || 5,
           gameMode: body.gameMode,
           avatarIndex: typeof body.avatarIndex === 'number' ? body.avatarIndex : undefined,
+          customWords: Array.isArray(body.customWords) ? body.customWords : undefined,
         });
         res.status(201).json(session);
         return;

@@ -384,7 +384,11 @@ export function createRoom(input: RoomCreateInput): RoomSession {
   let code = createRoomCode();
   while (rooms.has(code)) code = createRoomCode();
 
-  const selectedCategory = (input.category && wordBank[input.category]) ? input.category : Object.keys(wordBank)[0];
+  const hasCustomWords = Array.isArray(input.customWords) && input.customWords.length > 0;
+  const selectedCategory = input.category || (hasCustomWords ? 'Tùy chỉnh' : Object.keys(wordBank)[0]);
+  const wordsList = hasCustomWords
+    ? input.customWords!
+    : (wordBank[selectedCategory] || Object.values(wordBank)[0] || []);
   const targetScore = input.targetScore && [3, 5, 10].includes(input.targetScore) ? input.targetScore : 5;
 
   const token = createPlayerToken();
@@ -405,7 +409,7 @@ export function createRoom(input: RoomCreateInput): RoomSession {
     turnIndex: 0,
     scores: [0],
     wordIndex: 0,
-    words: shuffled(wordBank[selectedCategory]),
+    words: shuffled(wordsList),
     currentPrompt: null,
     lastRevealedWord: null,
     lastGuessFeedback: null,
