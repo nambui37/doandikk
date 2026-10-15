@@ -53,7 +53,7 @@ export async function apiActOnRoom(
   roomCode: string,
   token: string,
   action: RoomAction,
-  targetGuesserIndex?: number,
+  payload?: { guessText?: string; targetScore?: number },
 ): Promise<RoomView> {
   const res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(roomCode)}/actions`, {
     method: 'POST',
@@ -61,13 +61,28 @@ export async function apiActOnRoom(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ action, targetGuesserIndex }),
+    body: JSON.stringify({ action, ...payload }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Hành động không hợp lệ.');
   }
   return res.json();
+}
+
+export async function apiGuessWord(
+  roomCode: string,
+  token: string,
+  guessText: string,
+): Promise<RoomView> {
+  return apiActOnRoom(roomCode, token, 'guess', { guessText });
+}
+
+export async function apiFinishDrawingEarly(
+  roomCode: string,
+  token: string,
+): Promise<RoomView> {
+  return apiActOnRoom(roomCode, token, 'finish_drawing');
 }
 
 export async function apiUpdateRoomDrawing(

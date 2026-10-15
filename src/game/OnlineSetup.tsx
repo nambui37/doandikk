@@ -13,7 +13,8 @@ type Mode = 'host' | 'join';
 export default function OnlineSetup({ onSession, onBack }: Props) {
   const [mode, setMode] = useState<Mode>('host');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState(categories[0] || 'Đời thường');
+  const [category, setCategory] = useState(categories[0] || 'Đồ vật quen thuộc');
+  const [targetScore, setTargetScore] = useState<number>(5);
   const [roomCode, setRoomCode] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
       const data: RoomCreateInput = {
         playerName: name.trim(),
         category,
+        targetScore,
       };
       const session = await apiCreateRoom(data);
       onSession(session);
@@ -127,19 +129,55 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
             </label>
 
             {mode === 'host' ? (
-              <label className="online-field">
-                Chủ đề từ vựng
-                <select
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                >
-                  {categories.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <>
+                <label className="online-field">
+                  Chủ đề từ vựng
+                  <select
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value)}
+                  >
+                    {categories.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="online-field" style={{ marginBottom: 16 }}>
+                  <span>Điểm số mục tiêu để chiến thắng</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 6 }}>
+                    {[
+                      { score: 3, label: '3 Điểm', sub: 'Ván nhanh' },
+                      { score: 5, label: '5 Điểm', sub: 'Tiêu chuẩn' },
+                      { score: 10, label: '10 Điểm', sub: 'Đua điểm' },
+                    ].map((item) => (
+                      <button
+                        key={item.score}
+                        type="button"
+                        onClick={() => setTargetScore(item.score)}
+                        style={{
+                          padding: '10px 6px',
+                          borderRadius: 10,
+                          border: targetScore === item.score ? '2px solid #f7d55c' : '1px solid #2a2e3d',
+                          background: targetScore === item.score ? 'rgba(247, 213, 92, 0.15)' : '#181b24',
+                          color: targetScore === item.score ? '#f7d55c' : '#c8cddc',
+                          fontWeight: targetScore === item.score ? 700 : 500,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 2,
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <span style={{ fontSize: 14 }}>{item.label}</span>
+                        <small style={{ fontSize: 11, color: '#71798f' }}>{item.sub}</small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             ) : (
               <label className="online-field">
                 Mã phòng (gồm 6 ký tự)

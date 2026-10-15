@@ -8,11 +8,29 @@ type ResultsProps = {
   config?: GameConfig;
   players?: RoomPlayer[];
   scores: number[];
-  onAgain: () => void;
-  onSetup: () => void;
+  winner?: RoomPlayer | null;
+  targetScore?: number;
+  isHost?: boolean;
+  onAgain?: () => void;
+  onPlayAgain?: () => void;
+  onSetup?: () => void;
+  onExit?: () => void;
 };
 
-export default function ResultsScreen({ config, players, scores, onAgain, onSetup }: ResultsProps) {
+export default function ResultsScreen({
+  config,
+  players,
+  scores,
+  winner: propWinner,
+  targetScore,
+  isHost = true,
+  onAgain,
+  onPlayAgain,
+  onSetup,
+  onExit,
+}: ResultsProps) {
+  const handlePlayAgain = onPlayAgain || onAgain || (() => {});
+  const handleExit = onExit || onSetup || (() => {});
   // Chuẩn hóa danh sách người chơi
   const playerList = players
     ? players.map((p) => ({ name: p.name, score: scores[p.index] || 0 }))
@@ -75,12 +93,14 @@ export default function ResultsScreen({ config, players, scores, onAgain, onSetu
         </div>
 
         <div className="result-buttons" style={{ marginTop: 22 }}>
-          <button className="secondary-btn" onClick={onSetup}>
-            <Settings2 /> Đổi thiết lập
+          <button className="secondary-btn" onClick={handleExit}>
+            <Settings2 /> {players ? 'Thoát phòng' : 'Đổi thiết lập'}
           </button>
-          <button className="primary-btn" onClick={onAgain}>
-            <RotateCcw /> Chơi lại ván mới
-          </button>
+          {isHost && (
+            <button className="primary-btn" onClick={handlePlayAgain}>
+              <RotateCcw /> Chơi lại ván mới
+            </button>
+          )}
         </div>
       </section>
     </main>

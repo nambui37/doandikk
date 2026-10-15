@@ -729,3 +729,146 @@ h1,h2,h3,p { margin-top:0; }
   font-weight: 700;
   margin-top: 4px;
 }
+
+/* Styles cho Phase 60s Vẽ & 20s Đoán */
+.online-role-banner.danger-phase {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  color: #ffb4b4;
+  animation: pulse-danger 1.5s infinite;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+@keyframes pulse-danger {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.online-role-banner.reveal-phase {
+  background: rgba(85, 211, 191, 0.2);
+  border-color: #55d3bf;
+  color: #a5eee0;
+  font-size: 14px;
+}
+
+.meter-fill.danger-meter {
+  background: linear-gradient(90deg, #ef4444, #f97316);
+}
+
+.icon-btn-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(247, 213, 92, 0.35);
+  background: rgba(247, 213, 92, 0.12);
+  color: #f7d55c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.icon-btn-text:hover {
+  background: rgba(247, 213, 92, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Ô nhập đoán từ khóa tự động */
+.guess-input-container {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+  width: 100%;
+}
+
+.guess-input {
+  flex: 1;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 2px solid #363d52;
+  background: #171b29;
+  color: #f8f0df;
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.guess-input:focus {
+  border-color: #f7d55c;
+  box-shadow: 0 0 0 4px rgba(247, 213, 92, 0.15);
+}
+
+.guess-submit-btn {
+  height: 52px;
+  padding: 0 20px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Banner phản hồi câu trả lời đúng / sai */
+.guess-feedback-banner {
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin: 10px 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  animation: slide-up 0.25s ease;
+}
+.guess-feedback-banner.correct {
+  background: rgba(85, 211, 191, 0.18);
+  border: 1px solid #55d3bf;
+  color: #55d3bf;
+}
+.guess-feedback-banner.wrong {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  color: #ff9d9d;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Bảng xếp hạng bên cột phụ */
+.players-rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rank-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #171b29;
+  border: 1px solid #2a2e3d;
+  font-size: 13px;
+}
+.rank-badge {
+  font-size: 15px;
+  margin-right: 8px;
+}
+.rank-name {
+  flex: 1;
+  color: #c8cddc;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rank-score {
+  color: #f7d55c;
+  font-weight: 700;
+}
+

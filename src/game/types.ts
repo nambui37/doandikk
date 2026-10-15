@@ -1,5 +1,6 @@
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'paused' | 'results';
-export type RoomAction = 'start' | 'correct' | 'pass' | 'pause' | 'resume' | 'restart';
+export type RoomTurnPhase = 'drawing' | 'guessing' | 'reveal';
+export type RoomAction = 'start' | 'guess' | 'finish_drawing' | 'pause' | 'resume' | 'restart';
 
 export type DrawingPoint = { x: number; y: number };
 export type DrawingStroke = {
@@ -16,18 +17,28 @@ export type RoomPlayer = {
   score: number;
 };
 
+export type GuessFeedback = {
+  guesserName: string;
+  text: string;
+  isCorrect: boolean;
+  timestamp: number;
+};
+
 export type RoomView = {
   roomCode: string;
   status: RoomStatus;
+  currentPhase: RoomTurnPhase;
+  phaseTimeLeftSeconds: number;
   players: RoomPlayer[];
   category: string;
+  targetScore: number;
   turnIndex: number;
-  totalTurns: number;
   drawerIndex: number;
-  timeLeftSeconds: number;
   scores: number[];
-  correctThisTurn: number;
   currentPrompt: string | null;
+  lastRevealedWord: string | null;
+  lastGuessFeedback: GuessFeedback | null;
+  winnerIndex: number | null;
   drawingRevision: number;
   drawingStrokes: DrawingStroke[];
 };
@@ -42,6 +53,7 @@ export type RoomSession = {
 export type RoomCreateInput = {
   playerName: string;
   category: string;
+  targetScore?: number;
 };
 
 export type RoomJoinInput = {

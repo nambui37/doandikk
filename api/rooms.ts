@@ -55,7 +55,8 @@ export default async function handler(req: any, res: any) {
         }
         const session = createRoom({
           playerName,
-          category: body.category || 'Đồ vật & Đời thường',
+          category: body.category || 'Đồ vật quen thuộc',
+          targetScore: Number(body.targetScore) || 5,
         });
         res.status(201).json(session);
         return;
@@ -100,7 +101,10 @@ export default async function handler(req: any, res: any) {
         res.status(400).json({ error: 'Thiếu trường hành động (action).' });
         return;
       }
-      const view = performRoomAction(roomCode, token, action, body.targetGuesserIndex);
+      const view = performRoomAction(roomCode, token, action, {
+        guessText: body.guessText,
+        targetScore: body.targetScore,
+      });
       res.status(200).json(view);
       return;
     }
