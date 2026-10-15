@@ -165,16 +165,16 @@ export default function OnlineSetup({ onSession }: Props) {
             </div>
           </div>
 
-          {/* HERO BANNER & LOGO */}
+          {/* HERO BANNER & LOGO: THƯƠNG HIỆU NAM PHONE */}
           <div className="gartic-hero-section">
             <div className="gartic-tober-sticker">
-              <span className="tober-text">Gartic TOBER</span>
+              <span className="tober-text">Nam TOBER</span>
               <span className="tober-badge-sub">it's on!</span>
             </div>
 
             <div className="gartic-logo-master">
               <div className="gartic-logo-frame">
-                <div className="gartic-brand-word">Gartic</div>
+                <div className="gartic-brand-word">Nam</div>
                 <div className="gartic-phone-word">
                   <span>PH</span>
                   <span className="phone-reel-circle">🎬</span>
@@ -190,12 +190,9 @@ export default function OnlineSetup({ onSession }: Props) {
             {/* PANEL TRÁI: HỒ SƠ & BẮT ĐẦU */}
             <div className="gartic-main-card left-panel">
               <div className="panel-tab-bar">
-                <button type="button" className="gartic-panel-tab active">
+                <div className="gartic-panel-tab active">
                   ẨN DANH
-                </button>
-                <button type="button" className="gartic-panel-tab inactive">
-                  ĐÃ XÁC THỰC
-                </button>
+                </div>
               </div>
 
               {/* PHẦN THÂN: AVATAR TRÒN & Ô NHẬP TÊN BÊN CẠNH */}
