@@ -39,7 +39,11 @@ import {
 } from '../lib/api';
 import { P2PManager, type P2PMessage } from '../lib/p2p';
 
-function getAvatarForPlayer(name: string) {
+function getAvatarForPlayer(player: { name: string; avatarIndex?: number } | string) {
+  if (typeof player === 'object' && typeof player.avatarIndex === 'number' && AVATAR_LIST[player.avatarIndex]) {
+    return AVATAR_LIST[player.avatarIndex];
+  }
+  const name = typeof player === 'string' ? player : player.name;
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = (hash + name.charCodeAt(i)) % AVATAR_LIST.length;
   return AVATAR_LIST[hash] || AVATAR_LIST[0];
@@ -70,6 +74,8 @@ export default function OnlineRoom({ session, onExit }: Props) {
   const drawingRevision = useRef(session.view.drawingRevision || 0);
   const p2pManagerRef = useRef<P2PManager | null>(null);
   const lastFeedbackTimestamp = useRef<number>(0);
+  const drawingDebounceTimer = useRef<any>(null);
+  const pendingStrokesRef = useRef<DrawingStroke[] | null>(null);
 
   // Khởi tạo WebRTC P2P (CHỈ truyền nét vẽ DRAW_STROKE và CLEAR_DRAWING, tuyệt đối không đồng bộ view)
   useEffect(() => {
@@ -140,7 +146,8 @@ export default function OnlineRoom({ session, onExit }: Props) {
         // Tiếp tục poll khi mạng lag
       } finally {
         if (!isCancelled) {
-          timerId = setTimeout(poll, 1200);
+          const isReveal = view.currentPhase === 'reveal';
+          timerId = setTimeout(poll, isReveal ? 400 : 900);
         }
       }
     };
@@ -181,6 +188,16 @@ export default function OnlineRoom({ session, onExit }: Props) {
   const handleFinishDrawingEarly = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+    // Flush ngay lập tức các nét vẽ còn pending
+    if (drawingDebounceTimer.current) {
+      clearTimeout(drawingDebounceTimer.current);
+      if (pendingStrokesRef.current) {
+        apiUpdateRoomDrawing(roomCode, playerToken, {
+          revision: drawingRevision.current,
+          strokes: pendingStrokesRef.current,
+        }).catch(() => {});
+      }
+    }
     try {
       const nextView = await apiFinishDrawingEarly(roomCode, playerToken);
       setView(nextView);
@@ -223,12 +240,14 @@ export default function OnlineRoom({ session, onExit }: Props) {
     }
   };
 
-  // Cập nhật nét vẽ realtime
+  // Cập nhật nét vẽ realtime (P2P phát tức thì + HTTP debounce 60ms để không nghẽn mạng)
   const handleDrawingChange = useCallback(
     (strokes: DrawingStroke[]) => {
       const newRev = drawingRevision.current + 1;
       drawingRevision.current = newRev;
+      pendingStrokesRef.current = strokes;
 
+      // 1. Broadcast P2P ngay lập tức để người chơi khác thấy không độ trễ
       if (p2pManagerRef.current?.isConnected) {
         const lastStroke = strokes[strokes.length - 1];
         if (lastStroke) {
@@ -240,10 +259,16 @@ export default function OnlineRoom({ session, onExit }: Props) {
         }
       }
 
-      apiUpdateRoomDrawing(roomCode, playerToken, {
-        revision: newRev,
-        strokes,
-      }).catch(() => {});
+      // 2. Debounce gửi HTTP lên server (60ms) để không nghẽn mạng khi vẽ nhanh liên tục
+      if (drawingDebounceTimer.current) clearTimeout(drawingDebounceTimer.current);
+      drawingDebounceTimer.current = setTimeout(() => {
+        if (pendingStrokesRef.current) {
+          apiUpdateRoomDrawing(roomCode, playerToken, {
+            revision: drawingRevision.current,
+            strokes: pendingStrokesRef.current,
+          }).catch(() => {});
+        }
+      }, 60);
     },
     [roomCode, playerToken],
   );
@@ -372,7 +397,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
             </div>
             <div className="gartic-players-pod-grid">
               {view.players.map((player) => {
-                const av = getAvatarForPlayer(player.name);
+                const av = getAvatarForPlayer(player);
                 return (
                   <div
                     key={player.index}

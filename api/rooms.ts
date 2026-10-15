@@ -57,6 +57,8 @@ export default async function handler(req: any, res: any) {
           playerName,
           category: body.category || 'Đồ vật quen thuộc',
           targetScore: Number(body.targetScore) || 5,
+          gameMode: body.gameMode,
+          avatarIndex: typeof body.avatarIndex === 'number' ? body.avatarIndex : undefined,
         });
         res.status(201).json(session);
         return;
@@ -82,7 +84,11 @@ export default async function handler(req: any, res: any) {
         res.status(400).json({ error: 'Vui lòng nhập tên trước khi vào phòng.' });
         return;
       }
-      const session = joinRoom(roomCode, playerName);
+      const session = joinRoom(
+        roomCode,
+        playerName,
+        typeof body.avatarIndex === 'number' ? body.avatarIndex : undefined,
+      );
       res.status(200).json(session);
       return;
     }

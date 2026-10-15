@@ -889,6 +889,9 @@ h1,h2,h3,p { margin-top:0; }
   width: 100%;
   height: 100%;
   display: block;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 .gartic-canvas-surface.pen-active {
   cursor: crosshair;
@@ -1714,8 +1717,11 @@ h1,h2,h3,p { margin-top:0; }
   }
 
   .gartic-canvas-stage {
-    min-height: 380px;
-    height: 68vw;
+    min-height: unset;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    max-height: 52vh;
+    height: auto;
   }
 
   .gartic-bottom-bar {
@@ -1742,6 +1748,104 @@ h1,h2,h3,p { margin-top:0; }
   }
   .secret-word {
     font-size: 20px;
+  }
+}
+
+/* ============================================================
+   CHẾ ĐỘ XOAY NGANG ĐIỆN THOẠI (MOBILE LANDSCAPE)
+============================================================ */
+@media (orientation: landscape) and (max-height: 550px) {
+  .gartic-playing-screen {
+    padding: 4px 8px 8px;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+
+  .gartic-play-topbar {
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    height: 38px;
+    min-height: unset;
+  }
+
+  .gartic-draw-wrapper {
+    height: calc(100vh - 46px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .gartic-console-frame {
+    flex-direction: row !important;
+    padding: 6px;
+    gap: 8px;
+    border-radius: 16px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Cột màu bên trái khi xoay ngang */
+  .gartic-left-panel {
+    flex-direction: column !important;
+    width: auto !important;
+    padding: 6px 4px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    justify-content: flex-start !important;
+  }
+  .gartic-palette-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px !important;
+  }
+  .gartic-color-btn {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  .gartic-current-color-preview {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Khung giấy vẽ ở giữa chiếm trọn chiều cao khi xoay ngang */
+  .gartic-canvas-stage {
+    flex: 1 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    aspect-ratio: unset !important;
+    max-height: 100% !important;
+  }
+
+  /* Cột công cụ bên phải khi xoay ngang */
+  .gartic-right-panel {
+    flex-direction: column !important;
+    width: auto !important;
+    padding: 6px 4px !important;
+    overflow-y: auto !important;
+  }
+  .gartic-tools-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+  .gartic-tool-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* Thanh dưới: kích cỡ cọ và nút DONE cực gọn */
+  .gartic-bottom-bar {
+    padding: 4px 8px;
+    margin-top: 4px;
+  }
+  .gartic-size-picker {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+  .gartic-done-btn {
+    padding: 6px 14px;
+    font-size: 13px;
   }
 }
 

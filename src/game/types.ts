@@ -19,6 +19,7 @@ export type DrawingStroke = {
   points: DrawingPoint[];
   color?: string;
   size?: number;
+  shape?: 'free' | 'rect' | 'circle' | 'line';
 };
 
 export type RoomPlayer = {
@@ -27,6 +28,7 @@ export type RoomPlayer = {
   isHost: boolean;
   online: boolean;
   score: number;
+  avatarIndex?: number;
 };
 
 export type GuessFeedback = {
@@ -109,9 +111,11 @@ export type RoomCreateInput = {
   category: string;
   targetScore?: number;
   gameMode?: GameMode;
+  avatarIndex?: number;
 };
 
 export type RoomJoinInput = {
   playerName: string;
+  avatarIndex?: number;
 };
 

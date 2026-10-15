@@ -44,10 +44,27 @@ export default function StrokeViewer({ strokes, className = '', width = 800, hei
         continue;
       }
 
+      // Hình tròn / Elip
+      if (stroke.shape === 'circle') {
+        const p0 = stroke.points[0];
+        const p1 = stroke.points[1] || stroke.points[stroke.points.length - 1];
+        const cx = ((p0.x + p1.x) / 2) * canvas.width;
+        const cy = ((p0.y + p1.y) / 2) * canvas.height;
+        const rx = (Math.abs(p1.x - p0.x) / 2) * canvas.width;
+        const ry = (Math.abs(p1.y - p0.y) / 2) * canvas.height;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        continue;
+      }
+
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x * canvas.width, stroke.points[0].y * canvas.height);
       for (let i = 1; i < stroke.points.length; i++) {
         ctx.lineTo(stroke.points[i].x * canvas.width, stroke.points[i].y * canvas.height);
+      }
+      if (stroke.shape === 'rect') {
+        ctx.closePath();
       }
       ctx.stroke();
     }

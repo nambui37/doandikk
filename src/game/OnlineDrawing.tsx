@@ -79,6 +79,7 @@ export default function OnlineDrawing({
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
+      // 1. Chấm điểm đơn
       if (stroke.points.length === 1) {
         ctx.beginPath();
         ctx.arc(
@@ -93,7 +94,40 @@ export default function OnlineDrawing({
         return;
       }
 
-      if (stroke.points.length === 2) {
+      // 2. Hình chữ nhật / Ô vuông sắc nét (không áp dụng quadraticCurveTo)
+      const isRect =
+        stroke.shape === 'rect' ||
+        (stroke.points.length === 5 &&
+          Math.abs(stroke.points[0].x - stroke.points[4].x) < 0.001 &&
+          Math.abs(stroke.points[0].y - stroke.points[4].y) < 0.001);
+
+      if (isRect) {
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x * width, stroke.points[0].y * height);
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x * width, stroke.points[i].y * height);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        return;
+      }
+
+      // 3. Hình tròn / Elip
+      if (stroke.shape === 'circle') {
+        const p0 = stroke.points[0];
+        const p1 = stroke.points[1] || stroke.points[stroke.points.length - 1];
+        const cx = ((p0.x + p1.x) / 2) * width;
+        const cy = ((p0.y + p1.y) / 2) * height;
+        const rx = (Math.abs(p1.x - p0.x) / 2) * width;
+        const ry = (Math.abs(p1.y - p0.y) / 2) * height;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        return;
+      }
+
+      // 4. Đoạn thẳng
+      if (stroke.shape === 'line' || stroke.points.length === 2) {
         ctx.beginPath();
         ctx.moveTo(stroke.points[0].x * width, stroke.points[0].y * height);
         ctx.lineTo(stroke.points[1].x * width, stroke.points[1].y * height);
@@ -101,6 +135,7 @@ export default function OnlineDrawing({
         return;
       }
 
+      // 5. Nét vẽ tự do (Smooth freehand curve)
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x * width, stroke.points[0].y * height);
       for (let i = 1; i < stroke.points.length - 1; i++) {
@@ -140,31 +175,68 @@ export default function OnlineDrawing({
 
   // Đồng bộ khi revision thay đổi từ server / đối thủ
   useEffect(() => {
-    if (observedRevision.current === revision) return;
+    if (observedRevision.current >= revision) return;
     observedRevision.current = revision;
 
+    // Nếu là người vẽ: không bao giờ để server ghi đè làm mất nét vẽ cục bộ đang vẽ dở
+    if (canDraw) {
+      if (localStrokesRef.current.length === 0 && strokes.length > 0) {
+        localStrokesRef.current = strokes;
+        renderAll(strokes);
+      }
+      return;
+    }
+
+    // Nếu là người xem / người đoán: cập nhật nét mới từ người vẽ
     if (!drawingRef.current) {
       localStrokesRef.current = strokes;
       renderAll(strokes);
     }
-  }, [revision, strokes, renderAll]);
+  }, [revision, strokes, renderAll, canDraw]);
 
-  // Điều chỉnh kích thước canvas sắc nét
+  // Điều chỉnh kích thước canvas sắc nét và tự động thích ứng với xoay màn hình (ResizeObserver)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const updateSize = () => {
-      const rect = canvas.getBoundingClientRect();
+    const applySize = (w: number, h: number) => {
+      if (w <= 0 || h <= 0) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-      renderAll(localStrokesRef.current);
+      const newW = Math.round(w * dpr);
+      const newH = Math.round(h * dpr);
+      if (canvas.width !== newW || canvas.height !== newH) {
+        canvas.width = newW;
+        canvas.height = newH;
+        renderAll(localStrokesRef.current);
+      }
     };
 
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    const rect = canvas.getBoundingClientRect();
+    applySize(rect.width, rect.height);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          applySize(width, height);
+        }
+      });
+      ro.observe(canvas);
+    }
+
+    const onWinResize = () => {
+      const r = canvas.getBoundingClientRect();
+      applySize(r.width, r.height);
+    };
+    window.addEventListener('resize', onWinResize);
+    window.addEventListener('orientationchange', onWinResize);
+
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', onWinResize);
+      window.removeEventListener('orientationchange', onWinResize);
+    };
   }, [renderAll]);
 
   const getCanvasPoint = (event: ReactPointerEvent<HTMLCanvasElement>): DrawingPoint | null => {
@@ -292,6 +364,7 @@ export default function OnlineDrawing({
           points: [...currentPointsRef.current],
           color: strokeColor,
           size: strokeSize,
+          shape: 'free',
         };
       }
     } else if (startPointRef.current) {
@@ -302,6 +375,7 @@ export default function OnlineDrawing({
 
         if (activeTool === 'line') {
           points.push(start, pt);
+          finalStroke = { points, color: strokeColor, size: strokeSize, shape: 'line' };
         } else if (activeTool === 'rect') {
           points.push(
             start,
@@ -310,22 +384,20 @@ export default function OnlineDrawing({
             { x: start.x, y: pt.y },
             start,
           );
+          finalStroke = { points, color: strokeColor, size: strokeSize, shape: 'rect' };
         } else if (activeTool === 'circle') {
           const cx = (start.x + pt.x) / 2;
           const cy = (start.y + pt.y) / 2;
           const rx = Math.abs(pt.x - start.x) / 2;
           const ry = Math.abs(pt.y - start.y) / 2;
-          for (let angle = 0; angle <= 360; angle += 15) {
+          for (let angle = 0; angle <= 360; angle += 10) {
             const rad = (angle * Math.PI) / 180;
             points.push({
               x: cx + rx * Math.cos(rad),
               y: cy + ry * Math.sin(rad),
             });
           }
-        }
-
-        if (points.length > 0) {
-          finalStroke = { points, color: strokeColor, size: strokeSize };
+          finalStroke = { points, color: strokeColor, size: strokeSize, shape: 'circle' };
         }
       }
     }

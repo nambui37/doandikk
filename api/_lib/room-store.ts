@@ -29,6 +29,7 @@ interface StoredPlayer {
   name: string;
   token: string;
   lastSeenAt: number;
+  avatarIndex?: number;
 }
 
 interface GameRoom {
@@ -65,7 +66,7 @@ interface GameRoom {
 
 const DRAWING_DURATION_MS = 60 * 1000; // 60 giây vẽ
 const GUESSING_DURATION_MS = 20 * 1000; // 20 giây đoán
-const REVEAL_DURATION_MS = 3 * 1000;   // 3 giây hiện kết quả
+const REVEAL_DURATION_MS = 1500;        // 1.5 giây hiện kết quả (chuyển lượt nhanh gọn)
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const ONLINE_WINDOW_MS = 15 * 1000;
 const ROOM_CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -349,6 +350,7 @@ export function roomView(room: GameRoom, playerIndex: number, now: number): Room
       isHost: index === 0,
       online: now - player.lastSeenAt <= ONLINE_WINDOW_MS,
       score: room.scores[index] || 0,
+      avatarIndex: player.avatarIndex,
     })),
     category: room.category,
     targetScore: room.targetScore,
@@ -364,6 +366,7 @@ export function roomView(room: GameRoom, playerIndex: number, now: number): Room
       points: stroke.points.map((p) => ({ ...p })),
       color: stroke.color,
       size: stroke.size,
+      shape: stroke.shape,
     })),
   };
 }
@@ -387,7 +390,7 @@ export function createRoom(input: RoomCreateInput): RoomSession {
   const token = createPlayerToken();
   const room: GameRoom = {
     code,
-    players: [{ name: input.playerName, token, lastSeenAt: now }],
+    players: [{ name: input.playerName, token, lastSeenAt: now, avatarIndex: input.avatarIndex }],
     category: selectedCategory,
     targetScore,
     gameMode: input.gameMode || 'telephone',
@@ -427,7 +430,7 @@ export function createRoom(input: RoomCreateInput): RoomSession {
   };
 }
 
-export function joinRoom(code: string, playerName: string) {
+export function joinRoom(code: string, playerName: string, avatarIndex?: number) {
   const room = findRoom(code);
   const now = Date.now();
 
@@ -439,6 +442,7 @@ export function joinRoom(code: string, playerName: string) {
   if (existingIndex >= 0) {
     const existingPlayer = room.players[existingIndex];
     existingPlayer.lastSeenAt = now;
+    if (typeof avatarIndex === 'number') existingPlayer.avatarIndex = avatarIndex;
     return {
       roomCode: room.code,
       playerToken: existingPlayer.token,
@@ -453,7 +457,7 @@ export function joinRoom(code: string, playerName: string) {
 
   const token = createPlayerToken();
   const newIndex = room.players.length;
-  room.players.push({ name: cleanName, token, lastSeenAt: now });
+  room.players.push({ name: cleanName, token, lastSeenAt: now, avatarIndex });
   room.scores.push(0);
 
   if (room.status === 'waiting' && room.players.length >= 2) {
@@ -686,7 +690,9 @@ export function updateRoomDrawing(
     throw new RoomStoreError(400, 'Thời gian vẽ đã kết thúc.');
   }
 
-  room.drawingStrokes = input.strokes;
-  room.drawingRevision = input.revision;
+  if (input.revision >= room.drawingRevision) {
+    room.drawingStrokes = input.strokes;
+    room.drawingRevision = input.revision;
+  }
   return roomView(room, playerIndex, now);
 }

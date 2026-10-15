@@ -49,8 +49,11 @@ const TUTORIAL_SLIDES = [
 
 export default function OnlineSetup({ onSession }: Props) {
   const [step, setStep] = useState<SetupStep>('profile');
-  const [name, setName] = useState('namm');
-  const [avatarIndex, setAvatarIndex] = useState(0);
+  const [name, setName] = useState(() => localStorage.getItem('phone_player_name') || '');
+  const [avatarIndex, setAvatarIndex] = useState(() => {
+    const saved = localStorage.getItem('phone_user_avatar_idx');
+    return saved !== null ? Number(saved) || 0 : 0;
+  });
   const [selectedMode, setSelectedMode] = useState<GameMode>('telephone');
   const [targetScore, setTargetScore] = useState<number>(5);
   const [roomCode, setRoomCode] = useState('');
@@ -100,14 +103,22 @@ export default function OnlineSetup({ onSession }: Props) {
   // BƯỚC 2: TẠO PHÒNG MỚI
   const handleCreateRoom = async () => {
     if (pending) return;
+    const cleanName = name.trim();
+    if (!cleanName) {
+      setError('⚠️ Vui lòng nhập tên người chơi.');
+      return;
+    }
     setPending(true);
     setSlowNotice(false);
     setError(null);
+    localStorage.setItem('phone_player_name', cleanName);
+    localStorage.setItem('phone_user_avatar_idx', String(avatarIndex));
     const timer = setTimeout(() => setSlowNotice(true), 1800);
 
     try {
       const data: RoomCreateInput = {
-        playerName: `${currentAvatar.name.split(' ')[0]} ${name.trim()}`,
+        playerName: cleanName,
+        avatarIndex,
         category: 'Đồ vật quen thuộc',
         targetScore,
         gameMode: selectedMode,
@@ -130,14 +141,22 @@ export default function OnlineSetup({ onSession }: Props) {
       setError('⚠️ Vui lòng nhập đủ 6 ký tự mã phòng!');
       return;
     }
+    const cleanName = name.trim();
+    if (!cleanName) {
+      setError('⚠️ Vui lòng nhập tên người chơi.');
+      return;
+    }
     setPending(true);
     setSlowNotice(false);
     setError(null);
+    localStorage.setItem('phone_player_name', cleanName);
+    localStorage.setItem('phone_user_avatar_idx', String(avatarIndex));
     const timer = setTimeout(() => setSlowNotice(true), 1800);
 
     try {
       const data: RoomJoinInput = {
-        playerName: `${currentAvatar.name.split(' ')[0]} ${name.trim()}`,
+        playerName: cleanName,
+        avatarIndex,
       };
       const session = await apiJoinRoom(cleanCode, data);
       onSession(session);
