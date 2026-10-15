@@ -48,6 +48,7 @@ export type RoomPlayer = {
 
 export type GuessFeedback = {
   guesserName: string;
+  drawerName?: string;
   text: string;
   isCorrect: boolean;
   timestamp: number;

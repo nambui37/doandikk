@@ -72,7 +72,8 @@ export const INITIAL_PRESET_PACKS: ThemePack[] = [
   },
 ];
 
-const STORAGE_KEY = 'namphone_theme_packs_v2';
+const STORAGE_KEY = 'namphone_theme_packs_v3';
+const LEGACY_STORAGE_KEY = 'namphone_theme_packs_v2';
 
 class CustomWordManager {
   private packs: ThemePack[] | null = null;
@@ -83,12 +84,23 @@ class CustomWordManager {
 
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        let saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) {
+          saved = localStorage.getItem(LEGACY_STORAGE_KEY);
+        }
         if (saved) {
-          const parsed = JSON.parse(saved);
+          const parsed: ThemePack[] = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
+            // Tự động đồng bộ các từ khóa mới từ defaultWordBank vào các gói chủ đề gốc
+            for (const [name, words] of Object.entries(defaultWordBank)) {
+              const pack = parsed.find((p) => p.name === name);
+              if (pack) {
+                pack.words = Array.from(new Set([...pack.words, ...words]));
+              }
+            }
             this.packs = parsed;
-            return this.packs!;
+            this.saveToStorage();
+            return this.packs;
           }
         }
       } catch {

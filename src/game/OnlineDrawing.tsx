@@ -322,19 +322,13 @@ export default function OnlineDrawing({
       // 12. Nét vẽ tự do (Smooth freehand curve)
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x * width, stroke.points[0].y * height);
-      for (let i = 1; i < stroke.points.length - 1; i++) {
+      let i = 1;
+      for (; i < stroke.points.length - 1; i++) {
         const xc = ((stroke.points[i].x + stroke.points[i + 1].x) / 2) * width;
         const yc = ((stroke.points[i].y + stroke.points[i + 1].y) / 2) * height;
         ctx.quadraticCurveTo(stroke.points[i].x * width, stroke.points[i].y * height, xc, yc);
       }
-      const last = stroke.points[stroke.points.length - 1];
-      const secondLast = stroke.points[stroke.points.length - 2];
-      ctx.quadraticCurveTo(
-        secondLast.x * width,
-        secondLast.y * height,
-        last.x * width,
-        last.y * height,
-      );
+      ctx.lineTo(stroke.points[i].x * width, stroke.points[i].y * height);
       ctx.stroke();
       ctx.restore();
     },
@@ -375,33 +369,39 @@ export default function OnlineDrawing({
 
   // Đồng bộ khi revision thay đổi từ server / đối thủ
   useEffect(() => {
-    // 1. Nếu server gửi danh sách nét vẽ rỗng (chuyển vòng mới hoặc bấm Xóa bảng vẽ)
-    if (strokes.length === 0) {
-      localStrokesRef.current = [];
-      undoStackRef.current = [];
-      redoStackRef.current = [];
-      observedRevision.current = revision;
-      renderAll([]);
-      return;
-    }
-
-    if (observedRevision.current >= revision) return;
-    observedRevision.current = revision;
-
-    // 2. Nếu là người vẽ: không ghi đè làm mất nét vẽ cục bộ đang vẽ dở (trừ khi local rỗng)
+    // 1. Nếu là người vẽ (drawer):
     if (canDraw) {
-      if (localStrokesRef.current.length === 0 && strokes.length > 0) {
+      // Khi server gửi danh sách nét vẽ rỗng (ví dụ: chuyển vòng mới hoặc bấm Xóa bảng vẽ)
+      // Chỉ reset nếu revision thực sự mới hơn VÀ local strokes đã rỗng (hoặc chưa vẽ gì)
+      if (strokes.length === 0 && revision > observedRevision.current && localStrokesRef.current.length === 0) {
+        observedRevision.current = revision;
+        renderAll([]);
+        return;
+      }
+
+      // Nếu local chưa có nét nào nhưng server có sẵn nét (vừa vào lại phòng khi đang là lượt vẽ)
+      if (localStrokesRef.current.length === 0 && strokes.length > 0 && revision > observedRevision.current) {
         localStrokesRef.current = strokes;
+        observedRevision.current = revision;
         renderAll(strokes);
       }
       return;
     }
 
-    // 3. Nếu là người xem / người đoán: cập nhật nét mới từ người vẽ
-    if (!drawingRef.current) {
-      localStrokesRef.current = strokes;
-      renderAll(strokes);
+    // 2. Nếu là người xem / người đoán:
+    if (revision <= observedRevision.current) return;
+    observedRevision.current = revision;
+
+    if (strokes.length === 0) {
+      localStrokesRef.current = [];
+      undoStackRef.current = [];
+      redoStackRef.current = [];
+      renderAll([]);
+      return;
     }
+
+    localStrokesRef.current = strokes;
+    renderAll(strokes);
   }, [revision, strokes, renderAll, canDraw]);
 
   // Điều chỉnh kích thước canvas sắc nét và tự động thích ứng với xoay màn hình (ResizeObserver)
@@ -449,7 +449,27 @@ export default function OnlineDrawing({
     };
   }, [renderAll]);
 
-  const getCanvasPoint = (event: ReactPointerEvent<HTMLCanvasElement>): DrawingPoint | null => {
+  // Ngăn chặn gián đoạn cử chỉ cuộn trang / swipe của Safari iOS khi chạm hoặc vẽ trên canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const preventTouchDefault = (e: TouchEvent) => {
+      if (canDraw && e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    canvas.addEventListener('touchstart', preventTouchDefault, { passive: false });
+    canvas.addEventListener('touchmove', preventTouchDefault, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('touchstart', preventTouchDefault);
+      canvas.removeEventListener('touchmove', preventTouchDefault);
+    };
+  }, [canDraw]);
+
+  const getCanvasPoint = (event: { clientX: number; clientY: number }): DrawingPoint | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
@@ -460,6 +480,7 @@ export default function OnlineDrawing({
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!canDraw) return;
+    if (event.cancelable) event.preventDefault();
     const pt = getCanvasPoint(event);
     if (!pt) return;
 
@@ -487,7 +508,11 @@ export default function OnlineDrawing({
       return;
     }
 
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // bỏ qua nếu browser không hỗ trợ
+    }
     drawingRef.current = true;
     startPointRef.current = pt;
     currentPointsRef.current = [pt];
@@ -519,51 +544,49 @@ export default function OnlineDrawing({
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!canDraw || !drawingRef.current) return;
-    const pt = getCanvasPoint(event);
-    if (!pt) return;
+    if (event.cancelable) event.preventDefault();
 
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d', { willReadFrequently: true });
     if (!canvas || !ctx) return;
 
+    // Lấy toàn bộ coalesced events để không bao giờ bị mất nét khi quẹt nhanh trên màn hình cảm ứng
+    const nativeEvt = event.nativeEvent as any;
+    const rawEvents: Array<{ clientX: number; clientY: number }> =
+      typeof nativeEvt?.getCoalescedEvents === 'function' && nativeEvt.getCoalescedEvents().length > 0
+        ? nativeEvt.getCoalescedEvents()
+        : [event];
+
     const strokeColor = activeTool === 'eraser' ? '#ffffff' : selectedColor;
     const strokeSize = activeTool === 'eraser' ? selectedSize * 2 : selectedSize;
 
     if (activeTool === 'pen' || activeTool === 'eraser') {
-      currentPointsRef.current.push(pt);
-      const points = currentPointsRef.current;
-      const len = points.length;
-
       ctx.save();
       ctx.strokeStyle = strokeColor;
+      ctx.fillStyle = strokeColor;
       ctx.lineWidth = strokeSize;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      if (len >= 3) {
-        ctx.beginPath();
-        const p0 = points[len - 3];
-        const p1 = points[len - 2];
-        const p2 = points[len - 1];
-        const mid1x = ((p0.x + p1.x) / 2) * canvas.width;
-        const mid1y = ((p0.y + p1.y) / 2) * canvas.height;
-        const mid2x = ((p1.x + p2.x) / 2) * canvas.width;
-        const mid2y = ((p1.y + p2.y) / 2) * canvas.height;
-        ctx.moveTo(mid1x, mid1y);
-        ctx.quadraticCurveTo(p1.x * canvas.width, p1.y * canvas.height, mid2x, mid2y);
-        ctx.stroke();
-      } else if (len === 2) {
-        ctx.beginPath();
-        ctx.moveTo(points[0].x * canvas.width, points[0].y * canvas.height);
-        ctx.lineTo(points[1].x * canvas.width, points[1].y * canvas.height);
-        ctx.stroke();
+      const rect = canvas.getBoundingClientRect();
+      for (const e of rawEvents) {
+        const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+        const pt = { x, y };
+
+        const len = currentPointsRef.current.length;
+        if (len > 0) {
+          const prev = currentPointsRef.current[len - 1];
+          // Nối nét mượt và liên tục tuyệt đối, không góc cạnh hay gián đoạn
+          ctx.beginPath();
+          ctx.moveTo(prev.x * canvas.width, prev.y * canvas.height);
+          ctx.lineTo(pt.x * canvas.width, pt.y * canvas.height);
+          ctx.stroke();
+        }
+        currentPointsRef.current.push(pt);
       }
       ctx.restore();
     } else if (activeTool === 'highlighter') {
-      currentPointsRef.current.push(pt);
-      const points = currentPointsRef.current;
-      const len = points.length;
-
       ctx.save();
       ctx.strokeStyle = strokeColor;
       ctx.globalAlpha = 0.35;
@@ -571,14 +594,27 @@ export default function OnlineDrawing({
       ctx.lineCap = 'square';
       ctx.lineJoin = 'miter';
 
-      if (len >= 2) {
-        ctx.beginPath();
-        ctx.moveTo(points[len - 2].x * canvas.width, points[len - 2].y * canvas.height);
-        ctx.lineTo(pt.x * canvas.width, pt.y * canvas.height);
-        ctx.stroke();
+      const rect = canvas.getBoundingClientRect();
+      for (const e of rawEvents) {
+        const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+        const pt = { x, y };
+
+        const len = currentPointsRef.current.length;
+        if (len > 0) {
+          const prev = currentPointsRef.current[len - 1];
+          ctx.beginPath();
+          ctx.moveTo(prev.x * canvas.width, prev.y * canvas.height);
+          ctx.lineTo(pt.x * canvas.width, pt.y * canvas.height);
+          ctx.stroke();
+        }
+        currentPointsRef.current.push(pt);
       }
       ctx.restore();
     } else if (startPointRef.current) {
+      const pt = getCanvasPoint(event);
+      if (!pt) return;
+
       // Xem trước trực tiếp hình dạng (Live Preview)
       renderAll(localStrokesRef.current);
       const start = startPointRef.current;
@@ -653,7 +689,11 @@ export default function OnlineDrawing({
   const handlePointerUp = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!canDraw || !drawingRef.current) return;
     try {
-      event.currentTarget.releasePointerCapture(event.pointerId);
+      if (event.currentTarget && typeof event.currentTarget.hasPointerCapture === 'function') {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      }
     } catch {
       // bỏ qua nếu đã release
     }
@@ -764,27 +804,35 @@ export default function OnlineDrawing({
       ref={wrapperRef}
       className={`gartic-draw-wrapper ${isLandscapeMode ? 'mobile-force-landscape' : ''} ${isFullscreen ? 'is-fullscreen' : ''}`}
     >
-      {/* THANH TIỆN ÍCH MOBILE: TOÀN MÀN HÌNH & TỰ ĐỘNG XOAY NGANG */}
+      {/* THANH TIỆN ÍCH MOBILE: TOÀN MÀN HÌNH, TỰ ĐỘNG XOAY NGANG & BADGE TRỰC TIẾP KHÔNG CHE KHUNG VẼ */}
       <div className="gartic-mobile-quick-actions">
-        <button
-          type="button"
-          className={`mobile-quick-btn ${isFullscreen ? 'active' : ''}`}
-          onClick={toggleFullscreen}
-          title="Chuyển đổi toàn màn hình (Fullscreen)"
-        >
-          {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
-          <span>{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
-        </button>
+        {!canDraw && drawerName ? (
+          <div className="gartic-live-indicator-pill">
+            <span className="live-dot pulse" /> Trực tiếp: {drawerName} đang vẽ
+          </div>
+        ) : <div />}
 
-        <button
-          type="button"
-          className={`mobile-quick-btn ${isLandscapeMode ? 'active landscape' : ''}`}
-          onClick={toggleLandscape}
-          title="Tự động xoay ngang và mở rộng tối đa màn hình điện thoại"
-        >
-          <Smartphone size={15} className={isLandscapeMode ? 'rotate-90-icon' : ''} />
-          <span>{isLandscapeMode ? 'Đứng lại' : 'Xoay ngang vẽ'}</span>
-        </button>
+        <div className="gartic-quick-buttons-group">
+          <button
+            type="button"
+            className={`mobile-quick-btn ${isFullscreen ? 'active' : ''}`}
+            onClick={toggleFullscreen}
+            title="Chuyển đổi toàn màn hình (Fullscreen)"
+          >
+            {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
+            <span>{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-quick-btn ${isLandscapeMode ? 'active landscape' : ''}`}
+            onClick={toggleLandscape}
+            title="Tự động xoay ngang và mở rộng tối đa màn hình điện thoại"
+          >
+            <Smartphone size={15} className={isLandscapeMode ? 'rotate-90-icon' : ''} />
+            <span>{isLandscapeMode ? 'Đứng lại' : 'Xoay ngang vẽ'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="gartic-console-frame">
@@ -811,13 +859,8 @@ export default function OnlineDrawing({
           </aside>
         )}
 
-        {/* KHUNG VẼ TRANG GIẤY Ở GIỮA (CANVAS) */}
+        {/* KHUNG VẼ TRANG GIẤY Ở GIỮA (CANVAS 100% THOÁNG KHÔNG BỊ CHỮ CHE) */}
         <div className="gartic-canvas-stage">
-          {!canDraw && drawerName && (
-            <div className="gartic-spectator-badge">
-              <span className="live-dot pulse" /> Đang xem {drawerName} vẽ trực tiếp…
-            </div>
-          )}
           <canvas
             ref={canvasRef}
             className={`gartic-canvas-surface ${canDraw ? 'pen-active' : 'read-only'}`}
@@ -825,6 +868,9 @@ export default function OnlineDrawing({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
+            onPointerLeave={(e) => {
+              if (drawingRef.current) handlePointerUp(e);
+            }}
           />
         </div>
 

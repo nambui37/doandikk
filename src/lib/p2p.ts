@@ -4,6 +4,7 @@ import type { DrawingStroke, RoomAction, RoomView } from '../game/types';
 export type P2PMessage =
   | { type: 'STATE_SYNC'; view: RoomView }
   | { type: 'DRAW_STROKE'; stroke: DrawingStroke; revision: number }
+  | { type: 'SYNC_STROKES'; strokes: DrawingStroke[]; revision: number }
   | { type: 'DRAW_POINT'; point: { x: number; y: number }; isNewStroke: boolean; color?: string; size?: number }
   | { type: 'CLEAR_DRAWING'; revision: number }
   | { type: 'REQUEST_ACTION'; action: RoomAction };

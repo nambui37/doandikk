@@ -45,6 +45,7 @@ interface GameRoom {
   turnIndex: number;
   scores: number[];
   wordIndex: number;
+  baseWords: string[];
   words: string[];
   currentPrompt: string | null;
   lastRevealedWord: string | null;
@@ -133,6 +134,14 @@ function checkCorrectGuess(guess: string, target: string): boolean {
 
   if (strippedGuess === strippedTarget && strippedGuess.length >= 2) return true;
 
+  // Hỗ trợ người dùng gõ liền không khoảng cách trên điện thoại (VD: "balo" <-> "ba lo")
+  if (
+    strippedGuess.replace(/\s+/g, '') === strippedTarget.replace(/\s+/g, '') &&
+    strippedGuess.replace(/\s+/g, '').length >= 3
+  ) {
+    return true;
+  }
+
   // So khớp đảo từ (VD: "pin sạc" <-> "sạc pin")
   const guessTokens = strippedGuess.split(/\s+/).filter(Boolean).sort().join(' ');
   const targetTokens = strippedTarget.split(/\s+/).filter(Boolean).sort().join(' ');
@@ -157,6 +166,25 @@ function shuffled(items: string[] | undefined): string[] {
     [result[index], result[target]] = [result[target], result[index]];
   }
   return result;
+}
+
+// Xáo trộn kho từ khóa: ưu tiên đưa các từ CHƯA chơi lên đầu để không bao giờ bị trùng lặp khi chơi lại
+function reshuffleRoomWords(room: GameRoom): string[] {
+  const base = room.baseWords && room.baseWords.length > 0
+    ? room.baseWords
+    : (wordBank[room.category] || Object.values(wordBank)[0] || []);
+  if (!base || base.length === 0) return Object.values(wordBank)[0] || [];
+
+  // Lấy các từ đã xuất hiện trong ván vừa kết thúc
+  const playedSlice = (room.words || []).slice(0, Math.min(room.wordIndex + 1, (room.words || []).length));
+  const unplayed = base.filter((w) => !playedSlice.includes(w));
+  const played = base.filter((w) => playedSlice.includes(w));
+
+  // Trộn riêng 2 nhóm và ghép lại: nhóm chưa chơi lên trước, nhóm đã chơi về sau
+  const shuffledUnplayed = shuffled(unplayed);
+  const shuffledPlayed = shuffled(played);
+
+  return [...shuffledUnplayed, ...shuffledPlayed];
 }
 
 function createRoomCode(): string {
@@ -200,17 +228,39 @@ function playerIndexForToken(room: GameRoom, token: string | undefined): number 
 
 // Chuyển sang vòng tiếp theo (Classic 1v1)
 function advanceToNextRound(room: GameRoom, now: number): void {
+  let reachedTarget = false;
+  let highestScore = -1;
+  let winnerIdx: number | null = null;
+  let isTie = false;
+
   for (let i = 0; i < room.players.length; i++) {
-    if (room.scores[i] >= room.targetScore) {
-      room.status = 'results';
-      room.winnerIndex = i;
-      room.phaseEndsAt = null;
-      return;
+    const s = room.scores[i] || 0;
+    if (s >= room.targetScore) {
+      reachedTarget = true;
     }
+    if (s > highestScore) {
+      highestScore = s;
+      winnerIdx = i;
+      isTie = false;
+    } else if (s === highestScore && highestScore > 0) {
+      isTie = true;
+    }
+  }
+
+  if (reachedTarget) {
+    room.status = 'results';
+    room.winnerIndex = isTie ? null : winnerIdx;
+    room.phaseEndsAt = null;
+    return;
   }
 
   room.turnIndex += 1;
   room.wordIndex += 1;
+  // Nếu đã dùng hết danh sách từ hiện tại, tự động xáo trộn kho từ mới
+  if (room.wordIndex >= room.words.length) {
+    room.words = reshuffleRoomWords(room);
+    room.wordIndex = 0;
+  }
   room.currentPhase = 'drawing';
   room.phaseEndsAt = now + DRAWING_DURATION_MS;
   clearDrawing(room);
@@ -409,6 +459,7 @@ export function createRoom(input: RoomCreateInput): RoomSession {
     turnIndex: 0,
     scores: [0],
     wordIndex: 0,
+    baseWords: [...wordsList],
     words: shuffled(wordsList),
     currentPrompt: null,
     lastRevealedWord: null,
@@ -542,6 +593,7 @@ export function performRoomAction(
       } else {
         room.currentPhase = 'drawing';
         room.turnIndex = 0;
+        room.words = reshuffleRoomWords(room);
         room.wordIndex = 0;
         room.scores = room.players.map(() => 0);
         room.winnerIndex = null;
@@ -623,23 +675,49 @@ export function performRoomAction(
       const currentWord = room.words[room.wordIndex % room.words.length];
       const isCorrect = checkCorrectGuess(guessText, currentWord);
       const guesserName = room.players[playerIndex].name;
+      const drawerName = room.players[drawerIndex]?.name || 'Người vẽ';
 
       room.lastGuessFeedback = {
         guesserName,
+        drawerName,
         text: guessText,
         isCorrect,
         timestamp: now,
       };
 
       if (isCorrect) {
-        room.scores[playerIndex] = (room.scores[playerIndex] || 0) + 1;
+        // CHỈ người vẽ được +1 điểm vì vẽ đẹp, chuẩn để người khác đoán ra!
+        if (drawerIndex >= 0 && drawerIndex < room.players.length) {
+          room.scores[drawerIndex] = (room.scores[drawerIndex] || 0) + 1;
+        }
+
         room.lastRevealedWord = currentWord;
         room.currentPhase = 'reveal';
         room.phaseEndsAt = now + REVEAL_DURATION_MS;
 
-        if (room.scores[playerIndex] >= room.targetScore) {
+        // Kiểm tra xem ai đã đạt mục tiêu điểm số để kết thúc ván đấu
+        let reachedTarget = false;
+        let highestScore = -1;
+        let winnerIdx: number | null = null;
+        let isTie = false;
+
+        for (let i = 0; i < room.players.length; i++) {
+          const s = room.scores[i] || 0;
+          if (s >= room.targetScore) {
+            reachedTarget = true;
+          }
+          if (s > highestScore) {
+            highestScore = s;
+            winnerIdx = i;
+            isTie = false;
+          } else if (s === highestScore && highestScore > 0) {
+            isTie = true;
+          }
+        }
+
+        if (reachedTarget) {
           room.status = 'results';
-          room.winnerIndex = playerIndex;
+          room.winnerIndex = isTie ? null : winnerIdx;
           room.phaseEndsAt = null;
         }
       }
@@ -652,6 +730,8 @@ export function performRoomAction(
       room.currentPhase = 'drawing';
       room.phaseEndsAt = null;
       room.turnIndex = 0;
+      // TRỘN LẠI TOÀN BỘ TỪ KHÓA: Đưa các từ mới chưa chơi lên đầu để không bao giờ bị lặp lại
+      room.words = reshuffleRoomWords(room);
       room.wordIndex = 0;
       room.scores = room.players.map(() => 0);
       room.winnerIndex = null;

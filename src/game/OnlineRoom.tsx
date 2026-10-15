@@ -71,7 +71,21 @@ export default function OnlineRoom({ session, onExit }: Props) {
 
   // Ô nhập đoán từ khóa
   const [guessInput, setGuessInput] = useState('');
-  const [lastFeedback, setLastFeedback] = useState<{ text: string; isCorrect: boolean } | null>(null);
+  const [lastFeedback, setLastFeedback] = useState<{
+    text: string;
+    guesserName?: string;
+    drawerName?: string;
+    isCorrect: boolean;
+  } | null>(null);
+
+  // Tự động ẩn thông báo đoán sau 4.5 giây để không che khuất màn hình
+  useEffect(() => {
+    if (!lastFeedback) return;
+    const timer = setTimeout(() => {
+      setLastFeedback(null);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [lastFeedback]);
 
   const roomCode = session.roomCode;
   const playerToken = session.playerToken;
@@ -84,14 +98,22 @@ export default function OnlineRoom({ session, onExit }: Props) {
   const drawingDebounceTimer = useRef<any>(null);
   const pendingStrokesRef = useRef<DrawingStroke[] | null>(null);
 
-  // Khởi tạo WebRTC P2P (CHỈ truyền nét vẽ DRAW_STROKE và CLEAR_DRAWING, tuyệt đối không đồng bộ view)
+  // Khởi tạo WebRTC P2P (truyền nét vẽ SYNC_STROKES, DRAW_STROKE và CLEAR_DRAWING tức thì)
   useEffect(() => {
     const p2p = new P2PManager(roomCode, isHost);
     p2pManagerRef.current = p2p;
 
     p2p.init(
       (msg: P2PMessage) => {
-        if (msg.type === 'DRAW_STROKE') {
+        if (msg.type === 'SYNC_STROKES') {
+          drawingRevision.current = Math.max(drawingRevision.current, msg.revision);
+          pendingStrokesRef.current = null;
+          setView((prev) => ({
+            ...prev,
+            drawingRevision: msg.revision,
+            drawingStrokes: msg.strokes,
+          }));
+        } else if (msg.type === 'DRAW_STROKE') {
           drawingRevision.current = Math.max(drawingRevision.current, msg.revision);
           setView((prev) => ({
             ...prev,
@@ -132,6 +154,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
             prevTurnIndexRef.current = nextView.turnIndex;
             drawingRevision.current = nextView.drawingRevision || 0;
             pendingStrokesRef.current = null;
+            setLastFeedback(null);
             if (drawingDebounceTimer.current) {
               clearTimeout(drawingDebounceTimer.current);
             }
@@ -139,7 +162,20 @@ export default function OnlineRoom({ session, onExit }: Props) {
             drawingRevision.current = Math.max(drawingRevision.current, nextView.drawingRevision);
           }
 
-          setView(nextView);
+          // Bảo vệ nét vẽ của Drawer và Viewer: không bao giờ để polling server đè lùi revision làm mất nét
+          setView((prev) => {
+            const isLocalDrawer = nextView.players.length > 0 &&
+              (nextView.turnIndex % nextView.players.length) === session.playerIndex;
+            const isSameTurn = nextView.turnIndex === prevTurnIndexRef.current;
+            const keepLocalDrawing = isLocalDrawer && isSameTurn && prev.drawingStrokes.length > 0;
+            const keepHigherRevision = isSameTurn && prev.drawingRevision > nextView.drawingRevision;
+
+            return {
+              ...nextView,
+              drawingRevision: (keepLocalDrawing || keepHigherRevision) ? prev.drawingRevision : nextView.drawingRevision,
+              drawingStrokes: (keepLocalDrawing || keepHigherRevision) ? prev.drawingStrokes : nextView.drawingStrokes,
+            };
+          });
 
           // Nhận diện khi có ai đó đoán đúng
           if (
@@ -147,12 +183,15 @@ export default function OnlineRoom({ session, onExit }: Props) {
             nextView.lastGuessFeedback.timestamp !== lastFeedbackTimestamp.current
           ) {
             lastFeedbackTimestamp.current = nextView.lastGuessFeedback.timestamp;
+            const fb = nextView.lastGuessFeedback;
             setLastFeedback({
-              text: `${nextView.lastGuessFeedback.guesserName}: "${nextView.lastGuessFeedback.text}"`,
-              isCorrect: nextView.lastGuessFeedback.isCorrect,
+              guesserName: fb.guesserName,
+              drawerName: fb.drawerName,
+              text: fb.text,
+              isCorrect: fb.isCorrect,
             });
 
-            if (nextView.lastGuessFeedback.isCorrect) {
+            if (fb.isCorrect) {
               confetti({
                 particleCount: 50,
                 spread: 70,
@@ -177,7 +216,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
       isCancelled = true;
       if (timerId) clearTimeout(timerId);
     };
-  }, [roomCode, playerToken]);
+  }, [roomCode, playerToken, session.playerIndex]);
 
   // Hành động phòng
   const handleAction = async (action: RoomAction) => {
@@ -250,11 +289,14 @@ export default function OnlineRoom({ session, onExit }: Props) {
       const nextView = await apiGuessWord(roomCode, playerToken, text);
       setView(nextView);
       if (nextView.lastGuessFeedback) {
+        const fb = nextView.lastGuessFeedback;
         setLastFeedback({
-          text: `${nextView.lastGuessFeedback.guesserName}: "${nextView.lastGuessFeedback.text}"`,
-          isCorrect: nextView.lastGuessFeedback.isCorrect,
+          guesserName: fb.guesserName,
+          drawerName: fb.drawerName,
+          text: fb.text,
+          isCorrect: fb.isCorrect,
         });
-        if (nextView.lastGuessFeedback.isCorrect) {
+        if (fb.isCorrect) {
           confetti({
             particleCount: 60,
             spread: 75,
@@ -267,23 +309,27 @@ export default function OnlineRoom({ session, onExit }: Props) {
     }
   };
 
-  // Cập nhật nét vẽ realtime (P2P phát tức thì + HTTP debounce 60ms để không nghẽn mạng)
+  // Cập nhật nét vẽ realtime (P2P phát toàn bộ strokes tức thì + HTTP debounce 60ms)
   const handleDrawingChange = useCallback(
     (strokes: DrawingStroke[]) => {
       const newRev = drawingRevision.current + 1;
       drawingRevision.current = newRev;
       pendingStrokesRef.current = strokes;
 
-      // 1. Broadcast P2P ngay lập tức để người chơi khác thấy không độ trễ
+      // Cập nhật state view ngay lập tức để mượt mà
+      setView((prev) => ({
+        ...prev,
+        drawingRevision: newRev,
+        drawingStrokes: strokes,
+      }));
+
+      // 1. Broadcast P2P tức thì với toàn bộ nét vẽ SYNC_STROKES
       if (p2pManagerRef.current?.isConnected) {
-        const lastStroke = strokes[strokes.length - 1];
-        if (lastStroke) {
-          p2pManagerRef.current.broadcast({
-            type: 'DRAW_STROKE',
-            stroke: lastStroke,
-            revision: newRev,
-          });
-        }
+        p2pManagerRef.current.broadcast({
+          type: 'SYNC_STROKES',
+          strokes,
+          revision: newRev,
+        });
       }
 
       // 2. Debounce gửi HTTP lên server (60ms) để không nghẽn mạng khi vẽ nhanh liên tục
@@ -725,9 +771,12 @@ export default function OnlineRoom({ session, onExit }: Props) {
       {lastFeedback && (
         <div className={`gartic-feedback-toast ${lastFeedback.isCorrect ? 'correct' : 'wrong'}`}>
           {lastFeedback.isCorrect ? (
-            <>🎉 CHÍNH XÁC! {lastFeedback.text} đoán đúng! (+1 Điểm)</>
+            <>
+              🎉 CHÍNH XÁC! <strong>{lastFeedback.guesserName || 'Bạn'}</strong> đoán đúng từ "{lastFeedback.text}"
+              {lastFeedback.drawerName && <> &rarr; <strong>{lastFeedback.drawerName}</strong> vẽ chuẩn đẹp (+1 Điểm)!</>}
+            </>
           ) : (
-            <>{lastFeedback.text} — Chưa đúng, thử lại nhanh lên!</>
+            <>{lastFeedback.guesserName ? `${lastFeedback.guesserName}: "${lastFeedback.text}"` : `"${lastFeedback.text}"`} — Chưa đúng, thử lại nhanh lên!</>
           )}
         </div>
       )}
