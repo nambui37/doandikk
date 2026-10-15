@@ -154,3 +154,11 @@ export async function apiUpdateRoomDrawing(
   return res.json();
 }
 
+export async function apiLeaveRoom(roomCode: string, token: string): Promise<RoomView | null> {
+  try {
+    return await apiActOnRoom(roomCode, token, 'leave');
+  } catch {
+    return null;
+  }
+}
+

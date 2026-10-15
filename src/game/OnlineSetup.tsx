@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Globe2,
   RotateCw,
@@ -8,9 +8,22 @@ import {
   KeyRound,
   Sparkles,
   Trophy,
+  Volume2,
+  VolumeX,
+  Music,
+  Settings,
+  Gamepad2,
+  Crown,
+  Rocket,
+  Smile,
+  Users,
+  Flashlight,
 } from 'lucide-react';
 import { AVATAR_LIST } from './Avatars';
 import Avatar3D from './Avatar3D';
+import FlashlightEyeOverlay from './FlashlightEyeOverlay';
+import InstallAppModal from './InstallAppModal';
+import { soundManager } from '../lib/soundManager';
 import type { GameMode, RoomCreateInput, RoomJoinInput, RoomSession } from './types';
 import { apiCreateRoom, apiJoinRoom, warmUpServer } from '../lib/api';
 
@@ -20,6 +33,7 @@ type Props = {
 };
 
 type SetupStep = 'profile' | 'mode_select';
+type RightTab = 'tutorial' | 'settings';
 
 const TUTORIAL_SLIDES = [
   {
@@ -64,18 +78,38 @@ export default function OnlineSetup({ onSession }: Props) {
   const [slideIndex, setSlideIndex] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
 
+  // Tab bên phải: 'tutorial' (Cách chơi) hoặc 'settings' (Cài đặt âm thanh)
+  const [rightTab, setRightTab] = useState<RightTab>('tutorial');
+
+  // Cài đặt âm thanh & hiệu ứng
+  const [sfxEnabled, setSfxEnabled] = useState(() => soundManager.getSfx());
+  const [bgmEnabled, setBgmEnabled] = useState(() => soundManager.getBgm());
+  const [sfxVolume, setSfxVolume] = useState(() => soundManager.getSfxVolume());
+  const [bgmVolume, setBgmVolume] = useState(() => soundManager.getBgmVolume());
+  const [flashlightEnabled, setFlashlightEnabled] = useState(() => {
+    const saved = localStorage.getItem('phone_flashlight_enabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  // Vị trí avatar & hướng nhìn của mắt con trỏ chuột toàn màn hình
+  const avatarBoxRef = useRef<HTMLDivElement>(null);
+  const [screenPointer, setScreenPointer] = useState<{ x: number; y: number } | null>(null);
+
   // Đánh thức server Render ngầm
   useEffect(() => {
     warmUpServer();
   }, []);
 
-  // Tự động nhận diện ?room=ABCDEF từ link mời
+  // Luôn theo dõi vị trí chuột toàn màn hình để mắt và đầu avatar luôn nhìn theo chuột (kể cả khi tắt đèn pin)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const queryRoom = params.get('room');
-    if (queryRoom && queryRoom.trim().length === 6) {
-      setRoomCode(queryRoom.trim().toUpperCase());
-    }
+    const handleGlobalPointerMove = (e: PointerEvent) => {
+      const normX = (e.clientX / window.innerWidth) * 2 - 1;
+      const normY = -((e.clientY / window.innerHeight) * 2 - 1);
+      setScreenPointer({ x: normX, y: normY });
+    };
+
+    window.addEventListener('pointermove', handleGlobalPointerMove, { passive: true });
+    return () => window.removeEventListener('pointermove', handleGlobalPointerMove);
   }, []);
 
   const currentAvatar = AVATAR_LIST[avatarIndex] || AVATAR_LIST[0];
@@ -175,27 +209,36 @@ export default function OnlineSetup({ onSession }: Props) {
 
   return (
     <div className="gartic-home-viewport">
+      {/* HIỆU ỨNG ÁNH SÁNG ĐÈN PIN TỪ MẮT CHIẾU RA TOÀN BỘ MÀN HÌNH (CÓ THỂ BẬT/TẮT TRONG CÀI ĐẶT) */}
+      {step === 'profile' && flashlightEnabled && (
+        <FlashlightEyeOverlay
+          avatarAnchorRef={avatarBoxRef}
+          onPointerUpdate={(norm) => setScreenPointer(norm)}
+        />
+      )}
+
       {/* ============================================================
-          BƯỚC 1: GIAO DIỆN CHÍNH GARTIC PHONE CHUẨN 100% ẢNH MẪU
+          BƯỚC 1: GIAO DIỆN CHÍNH GARTIC PHONE CỰC CUTE THEO ẢNH MẪU
       ============================================================ */}
       {step === 'profile' ? (
         <div className="gartic-home-canvas fade-in">
-          {/* TOPBAR TRÊN CÙNG: NÚT NGÔN NGỮ */}
+          {/* TOPBAR TRÊN CÙNG: NÚT NGÔN NGỮ & NÚT THÊM VỀ MÀN HÌNH CHÍNH */}
           <div className="gartic-top-row">
+            <InstallAppModal />
             <div className="gartic-lang-pill">
               <Globe2 size={16} />
               <span>VI</span>
             </div>
           </div>
 
-          {/* HERO BANNER & LOGO: THƯƠNG HIỆU NAM PHONE */}
+          {/* HERO BANNER & LOGO: THƯƠNG HIỆU NAM PHONE VƯƠNG MIỆN VÀNG 3D */}
           <div className="gartic-hero-section">
-            <div className="gartic-tober-sticker">
-              <span className="tober-text">Nam TOBER</span>
-              <span className="tober-badge-sub">it's on!</span>
-            </div>
-
             <div className="gartic-logo-master">
+              {/* Vương miện vàng 3D tỏa sáng trên chữ Nam */}
+              <div className="gartic-crown-wrap">
+                <Crown size={30} className="golden-crown-svg" />
+              </div>
+
               <div className="gartic-logo-frame">
                 <div className="gartic-brand-word">Nam</div>
                 <div className="gartic-phone-word">
@@ -214,7 +257,7 @@ export default function OnlineSetup({ onSession }: Props) {
             <div className="gartic-main-card left-panel">
               <div className="panel-tab-bar">
                 <div className="gartic-panel-tab active">
-                  ẨN DANH
+                  ⚡ CHIẾN THẦN
                 </div>
               </div>
 
@@ -223,12 +266,18 @@ export default function OnlineSetup({ onSession }: Props) {
                 {/* VÒNG TRÒN AVATAR LỚN CÓ NÚT RANDOM 🔄 */}
                 <div className="gartic-big-avatar-box">
                   <div
+                    ref={avatarBoxRef}
                     className="avatar-circle-core"
                     style={{ backgroundColor: currentAvatar.bg, overflow: 'hidden' }}
                     onClick={handleRandomAvatar}
                     title="Bấm để đổi avatar 3D ngẫu nhiên"
                   >
-                    <Avatar3D avatarIndex={avatarIndex} isSpinning={isSpinning} />
+                    <Avatar3D
+                      avatarIndex={avatarIndex}
+                      isSpinning={isSpinning}
+                      targetPointer={screenPointer}
+                      flashlightEnabled={flashlightEnabled}
+                    />
                   </div>
                   <button
                     type="button"
@@ -264,11 +313,11 @@ export default function OnlineSetup({ onSession }: Props) {
                 </div>
               </div>
 
-              {/* NÚT BẮT ĐẦU 3D MÀU TÍM NHẠT / TRẮNG DÀY DẶN */}
+              {/* NÚT BẮT ĐẦU PHÁT SÁNG NEON MINT */}
               <div className="start-btn-center-box">
                 <button
                   type="button"
-                  className="gartic-chunky-start-button"
+                  className="gartic-chunky-start-button neon-mint-btn"
                   onClick={handleProfileStart}
                   disabled={pending}
                 >
@@ -276,54 +325,234 @@ export default function OnlineSetup({ onSession }: Props) {
                   <span className="start-button-text">BẮT ĐẦU</span>
                 </button>
               </div>
+
+              {/* 3 BADGES TÍNH NĂNG NHỎ CUTE BÊN DƯỚI BẮT ĐẦU */}
+              <div className="gartic-feature-badges-row">
+                <div className="feature-badge-item">
+                  <Rocket size={14} className="badge-icon-item" />
+                  <span>Chơi cùng bạn bè</span>
+                </div>
+                <div className="feature-badge-item">
+                  <Smile size={14} className="badge-icon-item" />
+                  <span>Vui nhộn bất ngờ</span>
+                </div>
+                <div className="feature-badge-item">
+                  <Users size={14} className="badge-icon-item" />
+                  <span>Nhiều chế độ hấp dẫn</span>
+                </div>
+              </div>
             </div>
 
-            {/* PANEL PHẢI: CÁCH CHƠI (TUTORIAL) */}
+            {/* PANEL PHẢI: CÁCH CHƠI & CÀI ĐẶT ÂM THANH */}
             <div className="gartic-main-card right-panel">
-              <div className="tutorial-green-header">CÁCH CHƠI</div>
-
-              <div className="tutorial-graphic-box">
-                <div className="tutorial-duo-avatars">
-                  <span className="tut-emoji">{TUTORIAL_SLIDES[slideIndex].emoji1}</span>
-                  <span className="tut-emoji secondary">{TUTORIAL_SLIDES[slideIndex].emoji2}</span>
-                </div>
-              </div>
-
-              <div className="tutorial-copy-box">
-                <h4 className="tutorial-headline-title">{TUTORIAL_SLIDES[slideIndex].title}</h4>
-                <p className="tutorial-headline-desc">{TUTORIAL_SLIDES[slideIndex].desc}</p>
-              </div>
-
-              {/* ĐIỀU HƯỚNG CAROUSEL: < ( ) . . . > */}
-              <div className="tutorial-carousel-nav">
+              {/* TAB BAR CHUYỂN ĐỔI: [ 🎮 CÁCH CHƠI ] | [ ⚙️ CÀI ĐẶT ] */}
+              <div className="right-panel-tab-bar">
                 <button
                   type="button"
-                  className="carousel-chevron-btn"
-                  onClick={() =>
-                    setSlideIndex((prev) => (prev - 1 + TUTORIAL_SLIDES.length) % TUTORIAL_SLIDES.length)
-                  }
+                  className={`right-panel-tab-btn ${rightTab === 'tutorial' ? 'active' : ''}`}
+                  onClick={() => {
+                    soundManager.playPop();
+                    setRightTab('tutorial');
+                  }}
                 >
-                  ◀
+                  <Gamepad2 size={16} />
+                  <span>CÁCH CHƠI</span>
                 </button>
-                <div className="carousel-dot-indicators">
-                  {TUTORIAL_SLIDES.map((_, idx) => (
-                    <span
-                      key={idx}
-                      className={`carousel-dot ${idx === slideIndex ? 'active' : ''}`}
-                      onClick={() => setSlideIndex(idx)}
-                    />
-                  ))}
-                </div>
+
                 <button
                   type="button"
-                  className="carousel-chevron-btn"
-                  onClick={() =>
-                    setSlideIndex((prev) => (prev + 1) % TUTORIAL_SLIDES.length)
-                  }
+                  className={`right-panel-tab-btn ${rightTab === 'settings' ? 'active' : ''}`}
+                  onClick={() => {
+                    soundManager.playPop();
+                    setRightTab('settings');
+                  }}
                 >
-                  ▶
+                  <Settings size={16} />
+                  <span>CÀI ĐẶT</span>
                 </button>
               </div>
+
+              {rightTab === 'tutorial' ? (
+                <>
+                  <div className="tutorial-graphic-box">
+                    <div className="tutorial-duo-avatars">
+                      <span className="tut-emoji">{TUTORIAL_SLIDES[slideIndex].emoji1}</span>
+                      <span className="tut-emoji secondary">{TUTORIAL_SLIDES[slideIndex].emoji2}</span>
+                    </div>
+                  </div>
+
+                  <div className="tutorial-copy-box">
+                    <h4 className="tutorial-headline-title">{TUTORIAL_SLIDES[slideIndex].title}</h4>
+                    <p className="tutorial-headline-desc">{TUTORIAL_SLIDES[slideIndex].desc}</p>
+                  </div>
+
+                  {/* ĐIỀU HƯỚNG CAROUSEL: < ( ) . . . > */}
+                  <div className="tutorial-carousel-nav">
+                    <button
+                      type="button"
+                      className="carousel-chevron-btn"
+                      onClick={() => {
+                        soundManager.playPop();
+                        setSlideIndex((prev) => (prev - 1 + TUTORIAL_SLIDES.length) % TUTORIAL_SLIDES.length);
+                      }}
+                    >
+                      ◀
+                    </button>
+                    <div className="carousel-dot-indicators">
+                      {TUTORIAL_SLIDES.map((_, idx) => (
+                        <span
+                          key={idx}
+                          className={`carousel-dot ${idx === slideIndex ? 'active' : ''}`}
+                          onClick={() => {
+                            soundManager.playPop();
+                            setSlideIndex(idx);
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="carousel-chevron-btn"
+                      onClick={() => {
+                        soundManager.playPop();
+                        setSlideIndex((prev) => (prev + 1) % TUTORIAL_SLIDES.length);
+                      }}
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* GIAO DIỆN CÀI ĐẶT ÂM THANH & TRẢI NGHIỆM */
+                <div className="settings-panel-content fade-in">
+                  {/* 1. ÂM THANH HIỆU ỨNG (SFX) */}
+                  <div className="setting-card-item">
+                    <div className="setting-info-left">
+                      <div className="setting-title-line">
+                        {sfxEnabled ? <Volume2 size={18} className="text-emerald-400" /> : <VolumeX size={18} className="text-zinc-400" />}
+                        <span className="setting-main-label">Hiệu ứng âm thanh (SFX)</span>
+                      </div>
+                      <span className="setting-sub-desc">Tiếng bấm nút, đổi avatar, vào ván</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`cute-toggle-btn ${sfxEnabled ? 'active' : ''}`}
+                      onClick={() => {
+                        const next = !sfxEnabled;
+                        setSfxEnabled(next);
+                        soundManager.setSfx(next);
+                      }}
+                    >
+                      <span className="toggle-circle" />
+                    </button>
+                  </div>
+
+                  {/* SLIDER ÂM LƯỢNG SFX */}
+                  {sfxEnabled && (
+                    <div className="setting-slider-container">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={sfxVolume}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setSfxVolume(v);
+                          soundManager.setSfxVolume(v);
+                        }}
+                        className="cute-range-input"
+                      />
+                      <span className="slider-value-display">{Math.round(sfxVolume * 100)}%</span>
+                      <button
+                        type="button"
+                        className="test-sound-pill-btn"
+                        onClick={() => soundManager.playPop()}
+                        title="Nghe thử âm thanh"
+                      >
+                        🎵 Thử
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 2. NHẠC NỀN THƯ GIÃN (BGM) */}
+                  <div className="setting-card-item">
+                    <div className="setting-info-left">
+                      <div className="setting-title-line">
+                        <Music size={18} className={bgmEnabled ? 'text-amber-400' : 'text-zinc-400'} />
+                        <span className="setting-main-label">Nhạc nền YouTube (BGM)</span>
+                      </div>
+                      <span className="setting-sub-desc">Bài hát YouTube ZX2mjf9dFH8 vui nhộn, hào hứng</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`cute-toggle-btn ${bgmEnabled ? 'active' : ''}`}
+                      onClick={() => {
+                        const next = !bgmEnabled;
+                        setBgmEnabled(next);
+                        soundManager.setBgm(next);
+                      }}
+                    >
+                      <span className="toggle-circle" />
+                    </button>
+                  </div>
+
+                  {/* SLIDER ÂM LƯỢNG BGM */}
+                  {bgmEnabled && (
+                    <div className="setting-slider-container">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={bgmVolume}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setBgmVolume(v);
+                          soundManager.setBgmVolume(v);
+                        }}
+                        className="cute-range-input"
+                      />
+                      <span className="slider-value-display">{Math.round(bgmVolume * 100)}%</span>
+                    </div>
+                  )}
+
+                  {/* 3. HIỆU ỨNG ĐÈN PIN MẮT THEO CHUỘT */}
+                  <div className="setting-card-item">
+                    <div className="setting-info-left">
+                      <div className="setting-title-line">
+                        <Flashlight size={18} className={flashlightEnabled ? 'text-yellow-300' : 'text-zinc-400'} />
+                        <span className="setting-main-label">Đèn pin mắt rọi theo chuột</span>
+                      </div>
+                      <span className="setting-sub-desc">Chùm sáng ma thuật từ mắt avatar</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`cute-toggle-btn ${flashlightEnabled ? 'active' : ''}`}
+                      onClick={() => {
+                        const next = !flashlightEnabled;
+                        setFlashlightEnabled(next);
+                        localStorage.setItem('phone_flashlight_enabled', String(next));
+                        soundManager.playPop();
+                      }}
+                    >
+                      <span className="toggle-circle" />
+                    </button>
+                  </div>
+
+                  {/* 4. NGÔN NGỮ */}
+                  <div className="setting-card-item">
+                    <div className="setting-info-left">
+                      <div className="setting-title-line">
+                        <Globe2 size={18} className="text-cyan-400" />
+                        <span className="setting-main-label">Ngôn ngữ game</span>
+                      </div>
+                      <span className="setting-sub-desc">Tiếng Việt (Việt Nam)</span>
+                    </div>
+                    <span className="language-pill-tag">🇻🇳 VI</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

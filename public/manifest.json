@@ -1,0 +1,32 @@
+{
+  "name": "Nam PHONE — Tam Sao Thất Bản 3D",
+  "short_name": "Nam PHONE",
+  "description": "Trò chơi Tam Sao Thất Bản 3D vui nhộn: Viết câu, vẽ tranh và đoán ý bạn bè cực hài hước!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0c29",
+  "theme_color": "#1e1b4b",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["games", "entertainment"]
+}

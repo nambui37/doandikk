@@ -9,17 +9,32 @@ export type RoomAction =
   | 'pause'
   | 'resume'
   | 'restart'
+  | 'leave'
   | 'telephone_submit'
   | 'set_game_mode'
   | 'set_telephone_config'
   | 'telephone_change_album';
 
 export type DrawingPoint = { x: number; y: number };
+export type DrawingShape =
+  | 'free'
+  | 'highlighter'
+  | 'rect'
+  | 'rect_fill'
+  | 'circle'
+  | 'circle_fill'
+  | 'triangle'
+  | 'triangle_fill'
+  | 'star'
+  | 'heart'
+  | 'line'
+  | 'fill';
+
 export type DrawingStroke = {
   points: DrawingPoint[];
   color?: string;
   size?: number;
-  shape?: 'free' | 'rect' | 'circle' | 'line';
+  shape?: DrawingShape;
 };
 
 export type RoomPlayer = {

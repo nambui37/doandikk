@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Brush,
   Eye,
-  Check,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { DrawingStroke, TelephoneState } from './types';
@@ -209,18 +208,6 @@ export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
                   onDone={handleDrawingSubmit}
                   onClearDrawing={() => setCurrentStrokes([])}
                 />
-              </div>
-
-              <div className="telephone-drawing-bottom-bar">
-                <button
-                  type="button"
-                  className="telephone-submit-btn drawing-btn"
-                  onClick={handleDrawingSubmit}
-                  disabled={isSubmitting}
-                >
-                  <Check size={20} />
-                  <span>HOÀN THÀNH & NỘP TRANH</span>
-                </button>
               </div>
             </div>
           )}

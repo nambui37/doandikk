@@ -27,6 +27,10 @@ import ResultsScreen from './ResultsScreen';
 import TelephonePlay from './TelephonePlay';
 import TelephoneAlbum from './TelephoneAlbum';
 import Hourglass3D from './Hourglass3D';
+import PlayerPodium3D from './PlayerPodium3D';
+import SoundSettingsModal from './SoundSettingsModal';
+import InstallAppModal from './InstallAppModal';
+import { soundManager } from '../lib/soundManager';
 import { AVATAR_LIST } from './Avatars';
 import {
   apiActOnRoom,
@@ -37,6 +41,7 @@ import {
   apiSetTelephoneConfig,
   apiTelephoneSubmit,
   apiUpdateRoomDrawing,
+  apiLeaveRoom,
 } from '../lib/api';
 import { P2PManager, type P2PMessage } from '../lib/p2p';
 
@@ -301,6 +306,12 @@ export default function OnlineRoom({ session, onExit }: Props) {
     const link = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
+    soundManager.playSuccess();
+    confetti({
+      particleCount: 110,
+      spread: 80,
+      origin: { y: 0.65 },
+    });
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
@@ -322,16 +333,29 @@ export default function OnlineRoom({ session, onExit }: Props) {
     }
   };
 
+  // Rời phòng có báo Server để cập nhật số người và kết thúc trận đấu nếu thiếu người
+  const handleExitRoom = async () => {
+    try {
+      await apiLeaveRoom(roomCode, playerToken);
+    } catch {
+      // ignore
+    }
+    onExit();
+  };
+
   // MÀN HÌNH KẾT QUẢ KHI CÓ NGƯỜI ĐẠT ĐỦ ĐIỂM HOẶC CÔNG CHIẾU ALBUM
   if (view.status === 'results') {
     if (view.gameMode === 'telephone' && view.telephoneState?.allBooks) {
       return (
-        <TelephoneAlbum
-          books={view.telephoneState.allBooks}
-          isHost={isHost}
-          onRestart={() => handleAction('restart')}
-          onExit={onExit}
-        />
+        <>
+          <SoundSettingsModal />
+          <TelephoneAlbum
+            books={view.telephoneState.allBooks}
+            isHost={isHost}
+            onRestart={() => handleAction('restart')}
+            onExit={handleExitRoom}
+          />
+        </>
       );
     }
 
@@ -340,15 +364,18 @@ export default function OnlineRoom({ session, onExit }: Props) {
       : null;
 
     return (
-      <ResultsScreen
-        scores={view.scores}
-        players={view.players}
-        winner={winnerPlayer}
-        targetScore={view.targetScore}
-        isHost={isHost}
-        onPlayAgain={() => handleAction('restart')}
-        onExit={onExit}
-      />
+      <>
+        <SoundSettingsModal />
+        <ResultsScreen
+          scores={view.scores}
+          players={view.players}
+          winner={winnerPlayer}
+          targetScore={view.targetScore}
+          isHost={isHost}
+          onPlayAgain={() => handleAction('restart')}
+          onExit={handleExitRoom}
+        />
+      </>
     );
   }
 
@@ -356,20 +383,24 @@ export default function OnlineRoom({ session, onExit }: Props) {
   if (view.status === 'waiting' || view.status === 'ready') {
     return (
       <main className="screen gartic-lobby-screen">
+        <SoundSettingsModal />
         <section className="gartic-lobby-card fade-in">
           {/* HEADER PHÒNG CHỜ */}
           <div className="gartic-lobby-header">
             <div className="gartic-tag">
               <Wifi size={14} /> Phòng chơi trực tuyến
             </div>
-            <button
-              type="button"
-              className="gartic-leave-btn-header"
-              onClick={() => setShowExitConfirm(true)}
-              title="Rời phòng"
-            >
-              <LogOut size={16} /> Rời phòng
-            </button>
+            <div className="lobby-header-right-actions">
+              <InstallAppModal />
+              <button
+                type="button"
+                className="gartic-leave-btn-header"
+                onClick={() => setShowExitConfirm(true)}
+                title="Rời phòng"
+              >
+                <LogOut size={16} /> Rời phòng
+              </button>
+            </div>
           </div>
 
           <h2 className="gartic-lobby-title">
@@ -391,44 +422,28 @@ export default function OnlineRoom({ session, onExit }: Props) {
             </button>
           </div>
 
-          {/* DANH SÁCH THẺ NGƯỜI CHƠI PHONG CÁCH GARTIC PHONE */}
+          {/* DANH SÁCH BỤC 3D NGƯỜI CHƠI (3D PODIUM LOBBY) */}
           <div className="gartic-players-section">
             <div className="gartic-section-label">
               <Users size={16} /> Người chơi trong phòng ({view.players.length}/8):
             </div>
-            <div className="gartic-players-pod-grid">
-              {view.players.map((player) => {
-                const av = getAvatarForPlayer(player);
-                return (
-                  <div
-                    key={player.index}
-                    className={`gartic-player-pod ${player.index === myIndex ? 'is-me' : ''}`}
-                  >
-                    <div className="gartic-avatar-circle" style={{ backgroundColor: av.bg }}>
-                      {av.render(36)}
-                    </div>
-                    <div className="gartic-pod-info">
-                      <span className="gartic-pod-name">
-                        {player.name} {player.index === myIndex && '(Bạn)'}
-                      </span>
-                      <span className="gartic-pod-role">
-                        {player.isHost ? (
-                          <>
-                            <Crown size={12} className="crown-icon" /> Chủ phòng
-                          </>
-                        ) : (
-                          'Đã sẵn sàng'
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="gartic-podium-lobby-grid">
+              {view.players.map((player) => (
+                <PlayerPodium3D
+                  key={player.index}
+                  player={player}
+                  isMe={player.index === myIndex}
+                  avatarIndex={player.avatarIndex ?? player.index}
+                />
+              ))}
               {view.players.length < 8 && (
-                <div className="gartic-player-pod waiting">
-                  <div className="gartic-avatar-circle dashed">?</div>
-                  <div className="gartic-pod-info">
-                    <span className="gartic-pod-name" style={{ color: '#888' }}>Chờ bạn bè...</span>
+                <div className="player-podium-card empty-waiting" onClick={copyInviteLink} title="Bấm để sao chép link mời bạn bè">
+                  <div className="podium-empty-box">
+                    <span className="empty-plus-icon">+</span>
+                    <span className="empty-invite-text">Mời bạn</span>
+                  </div>
+                  <div className="podium-pedestal-disk empty">
+                    <div className="pedestal-surface" />
                   </div>
                 </div>
               )}
@@ -549,7 +564,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
                   <button type="button" className="secondary-btn" onClick={() => setShowExitConfirm(false)}>
                     Ở lại
                   </button>
-                  <button type="button" className="danger-btn" onClick={onExit}>
+                  <button type="button" className="danger-btn" onClick={handleExitRoom}>
                     Rời đi
                   </button>
                 </div>
@@ -565,20 +580,26 @@ export default function OnlineRoom({ session, onExit }: Props) {
   if (view.gameMode === 'telephone' && view.telephoneState) {
     if (view.telephoneState.phase === 'album' && view.telephoneState.allBooks) {
       return (
-        <TelephoneAlbum
-          books={view.telephoneState.allBooks}
-          isHost={isHost}
-          onRestart={() => handleAction('restart')}
-          onExit={onExit}
-        />
+        <>
+          <SoundSettingsModal />
+          <TelephoneAlbum
+            books={view.telephoneState.allBooks}
+            isHost={isHost}
+            onRestart={() => handleAction('restart')}
+            onExit={handleExitRoom}
+          />
+        </>
       );
     }
     return (
-      <TelephonePlay
-        state={view.telephoneState}
-        roomCode={roomCode}
-        onSubmit={handleTelephoneSubmit}
-      />
+      <>
+        <SoundSettingsModal />
+        <TelephonePlay
+          state={view.telephoneState}
+          roomCode={roomCode}
+          onSubmit={handleTelephoneSubmit}
+        />
+      </>
     );
   }
 
@@ -593,6 +614,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
 
   return (
     <main className="gartic-playing-screen">
+      <SoundSettingsModal />
       {/* THANH TOP BAR PHONG CÁCH GARTIC PHONE */}
       <header className="gartic-play-topbar">
         <div className="topbar-left">
@@ -614,16 +636,6 @@ export default function OnlineRoom({ session, onExit }: Props) {
 
         {/* NÚT RỜI PHÒNG LUÔN CÓ MẶT */}
         <div className="topbar-right">
-          {isHost && (
-            <button
-              type="button"
-              className="gartic-icon-topbar-btn"
-              title="Chơi lại ván mới"
-              onClick={() => handleAction('restart')}
-            >
-              <RotateCcw size={16} />
-            </button>
-          )}
           <button
             type="button"
             className="gartic-leave-topbar-btn"
@@ -733,7 +745,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
               <button type="button" className="secondary-btn" onClick={() => setShowExitConfirm(false)}>
                 Tiếp tục chơi
               </button>
-              <button type="button" className="danger-btn" onClick={onExit}>
+              <button type="button" className="danger-btn" onClick={handleExitRoom}>
                 Rời phòng
               </button>
             </div>

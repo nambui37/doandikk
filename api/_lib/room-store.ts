@@ -663,6 +663,63 @@ export function performRoomAction(
       break;
     }
 
+    case 'leave': {
+      const leavingPlayer = room.players[playerIndex];
+      // Xóa người chơi khỏi danh sách
+      room.players.splice(playerIndex, 1);
+      room.scores.splice(playerIndex, 1);
+
+      // Nếu không còn ai trong phòng, dọn dẹp xóa luôn phòng
+      if (room.players.length === 0) {
+        rooms.delete(code);
+        return {
+          roomCode: code,
+          category: room.category,
+          targetScore: room.targetScore,
+          gameMode: room.gameMode,
+          telephoneConfig: room.telephoneConfig,
+          status: 'waiting',
+          currentPhase: 'drawing',
+          phaseTimeLeftSeconds: 0,
+          turnIndex: 0,
+          scores: [],
+          players: [],
+          drawerIndex: 0,
+          currentPrompt: null,
+          lastRevealedWord: null,
+          lastGuessFeedback: null,
+          winnerIndex: null,
+          drawingRevision: 0,
+          drawingStrokes: [],
+        };
+      }
+
+      // Nếu đang trong trận đấu mà số người chơi còn lại < 2:
+      // Tự động kết thúc ván đấu và chuyển về phòng chờ
+      if (room.status === 'playing' && room.players.length < 2) {
+        room.status = 'waiting';
+        room.currentPhase = 'drawing';
+        room.phaseEndsAt = null;
+        room.turnIndex = 0;
+        room.wordIndex = 0;
+        room.winnerIndex = null;
+        room.lastRevealedWord = null;
+        room.telephoneRound = 0;
+        room.telephoneTotalRounds = 0;
+        room.telephoneSubmissions = {};
+        clearDrawing(room);
+
+        room.lastGuessFeedback = {
+          guesserName: 'Hệ thống',
+          text: `${leavingPlayer?.name || 'Một người chơi'} đã rời phòng. Trận đấu kết thúc do không đủ người tham gia!`,
+          isCorrect: false,
+          timestamp: now,
+        };
+      }
+
+      return roomView(room, 0, now);
+    }
+
     default:
       throw new RoomStoreError(400, 'Hành động không hợp lệ.');
   }
