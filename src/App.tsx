@@ -130,131 +130,18 @@ function App() {
     resetToSetup();
   }, [resetToSetup]);
 
+  if (onlineSession) {
+    return <OnlineRoom session={onlineSession} onExit={exitOnlineRoom} />;
+  }
+
+  // Mặc định khi mới vào web: Luôn hiển thị giao diện Gartic Phone chính thức!
   return (
-    <div className="game-shell">
-      <GameScene />
-      <div className="app-ui">
-        <header className="topbar">
-          <div className="brand">
-            <span className="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M7 7h10M7 12h6M7 17h10"
-                  stroke="currentColor"
-                  strokeWidth="2.3"
-                  strokeLinecap="round"
-                />
-                <circle cx="17.5" cy="12" r="1.5" fill="currentColor" />
-              </svg>
-            </span>{' '}
-            Hai Bộ Óc Một Ý
-          </div>
-          <div className="top-note">Hai người · Cùng một ý · Một cuộc vui</div>
-        </header>
-
-        {onlineSession ? (
-          <OnlineRoom session={onlineSession} onExit={exitOnlineRoom} />
-        ) : onlineSetup ? (
-          <OnlineSetup
-            onSession={enterOnlineRoom}
-            onBack={() => setOnlineSetup(false)}
-          />
-        ) : !config || screen === 'setup' ? (
-          <StartScreen onStart={begin} onOnline={() => setOnlineSetup(true)} />
-        ) : screen === 'reveal' || screen === 'cardReveal' ? (
-          <HandoffScreen
-            config={config}
-            giverIndex={turn % 2}
-            word={currentWord}
-            seconds={seconds}
-            reveal
-            continueTurn={screen === 'cardReveal'}
-            onReady={() =>
-              setScreen(screen === 'reveal' ? 'handoff' : 'cardHandoff')
-            }
-          />
-        ) : screen === 'handoff' || screen === 'cardHandoff' ? (
-          <HandoffScreen
-            config={config}
-            giverIndex={turn % 2}
-            word={currentWord}
-            seconds={seconds}
-            reveal={false}
-            continueTurn={screen === 'cardHandoff'}
-            onReady={() => {
-              if (screen === 'handoff') setSeconds(60);
-              setScreen('playing');
-            }}
-          />
-        ) : (
-          screen === 'playing' && (
-            <PlayScreen
-              config={config}
-              turn={turn}
-              seconds={seconds}
-              word={currentWord}
-              scores={scores}
-              correctCount={correctCount}
-              paused={paused}
-              onCorrect={() => {
-                scoreCorrect();
-                setScreen('cardReveal');
-              }}
-              onPass={prepareNextCard}
-              onPause={() => setPaused(true)}
-              onResume={() => setPaused(false)}
-              onRestart={() => begin(config)}
-            />
-          )
-        )}
-
-        {!onlineSession && screen === 'turnDone' && config && (
-          <main className="screen">
-            <section className="handoff fade-in">
-              <div className="handoff-icon">
-                <span style={{ fontSize: 31, fontWeight: 900 }}>60</span>
-              </div>
-              <div className="eyebrow" style={{ justifyContent: 'center' }}>
-                Kết thúc lượt {turn + 1} / 4
-              </div>
-              <h1 style={{ marginTop: 16 }}>Hết giờ rồi!</h1>
-              <p>Điểm vẫn được giữ nguyên. Chuyền máy để người tiếp theo ra gợi ý.</p>
-              <div className="result-scores">
-                {config.players.map((player, index) => (
-                  <div className="result-score" key={player}>
-                    <small>{player}</small>
-                    <strong>{scores[index]}</strong>
-                  </div>
-                ))}
-              </div>
-              <button
-                className="primary-btn"
-                onClick={advance}
-              >
-                {turn === 3 ? 'Xem kết quả' : 'Sang lượt tiếp theo'}{' '}
-                <span aria-hidden="true">→</span>
-              </button>
-            </section>
-          </main>
-        )}
-
-        {!onlineSession && screen === 'results' && config && (
-          <ResultsScreen
-            config={config}
-            scores={scores}
-            onSetup={resetToSetup}
-            onAgain={() => begin(config)}
-          />
-        )}
-
-        {!onlineSetup && !onlineSession && screen === 'setup' && (
-          <div className="scene-label">
-            Thử xem hai bạn hiểu ý nhau đến đâu
-          </div>
-        )}
-      </div>
-    </div>
+    <OnlineSetup
+      onSession={enterOnlineRoom}
+      onBack={() => {}}
+    />
   );
 }
 
 export default App;
+

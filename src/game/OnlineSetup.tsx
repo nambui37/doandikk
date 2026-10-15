@@ -1,21 +1,17 @@
+import { useState, useEffect } from 'react';
 import {
+  Globe2,
+  RotateCw,
   ArrowRight,
   ArrowLeft,
   LoaderCircle,
-  RotateCw,
-  Play,
-  ChevronLeft,
-  ChevronRight,
+  KeyRound,
   Sparkles,
   Trophy,
-  Users,
-  KeyRound,
 } from 'lucide-react';
-import { useState, useEffect, type FormEvent } from 'react';
-import { categories } from './words';
+import { AVATAR_LIST } from './Avatars';
 import type { GameMode, RoomCreateInput, RoomJoinInput, RoomSession } from './types';
 import { apiCreateRoom, apiJoinRoom, warmUpServer } from '../lib/api';
-import { AVATAR_LIST, type AvatarItem } from './Avatars';
 
 type Props = {
   onSession: (session: RoomSession) => void;
@@ -26,30 +22,34 @@ type SetupStep = 'profile' | 'mode_select';
 
 const TUTORIAL_SLIDES = [
   {
-    title: '1. VIẾT MỘT CÂU HÀI HƯỚC',
-    desc: 'Mỗi người bắt đầu bằng một câu ngộ nghĩnh (Ví dụ: "Con mèo lái máy bay đi mua phở").',
-    icon: '✍️',
+    title: '1. GỌI SẼ TỐT HƠN',
+    desc: 'Mời bạn bè của bạn tham gia một cuộc gọi thoại (ví dụ: Discord, Zoom, Zalo).',
+    emoji1: '👾',
+    emoji2: '🐧',
   },
   {
-    title: '2. NHÌN CÂU & VẼ LẠI (75s)',
-    desc: 'Cuốn sổ được chuyền sang người tiếp theo, người này chỉ nhìn câu và vẽ lại bằng nét vẽ của mình.',
-    icon: '🎨',
+    title: '2. VIẾT MỘT CÂU BẤT KỲ',
+    desc: 'Mỗi người khởi đầu bằng một câu hài hước để bắt đầu cuốn sổ bí mật.',
+    emoji1: '✍️',
+    emoji2: '📝',
   },
   {
-    title: '3. NHÌN TRANH & ĐOÁN CÂU',
-    desc: 'Người kế tiếp chỉ nhìn tranh và đoán xem tranh đang vẽ gì. Câu đoán sẽ thành đề bài cho người sau!',
-    icon: '🤔',
+    title: '3. NHÌN CÂU & VẼ TRANH',
+    desc: 'Hãy thử vẽ lại câu miêu tả của bạn bè bằng tài năng hội họa của bạn.',
+    emoji1: '🎨',
+    emoji2: '🖼️',
   },
   {
-    title: '4. CÔNG CHIẾU ALBUM CUỐI VÁN',
-    desc: 'Cả nhóm cùng thưởng thức cuốn sổ bị biến đổi hài hước và cười nghiêng ngả!',
-    icon: '🎬',
+    title: '4. ĐÓ LÀ CÁI GÌ?',
+    desc: 'Hãy thử mô tả một trong các hình vẽ ngộ nghĩnh và cùng xem Album cuối ván!',
+    emoji1: '🤔',
+    emoji2: '🎬',
   },
 ];
 
-export default function OnlineSetup({ onSession, onBack }: Props) {
+export default function OnlineSetup({ onSession }: Props) {
   const [step, setStep] = useState<SetupStep>('profile');
-  const [name, setName] = useState('');
+  const [name, setName] = useState('namm');
   const [avatarIndex, setAvatarIndex] = useState(0);
   const [selectedMode, setSelectedMode] = useState<GameMode>('telephone');
   const [targetScore, setTargetScore] = useState<number>(5);
@@ -59,12 +59,12 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
 
-  // Đánh thức server Render ngay từ lúc vào màn hình
+  // Đánh thức server Render ngầm
   useEffect(() => {
     warmUpServer();
   }, []);
 
-  // Tự động nhận diện ?room=ABCDEF từ link mời của bạn bè
+  // Tự động nhận diện ?room=ABCDEF từ link mời
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const queryRoom = params.get('room');
@@ -79,30 +79,21 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
     setAvatarIndex((prev) => (prev + 1) % AVATAR_LIST.length);
   };
 
-  const handlePrevAvatar = () => {
-    setAvatarIndex((prev) => (prev - 1 + AVATAR_LIST.length) % AVATAR_LIST.length);
-  };
-
-  const handleNextAvatar = () => {
-    setAvatarIndex((prev) => (prev + 1) % AVATAR_LIST.length);
-  };
-
-  // BƯỚC 1: XÁC NHẬN TÊN VÀ AVATAR
-  const handleProfileStart = (e: FormEvent) => {
-    e.preventDefault();
+  // BƯỚC 1: BẤM "BẮT ĐẦU" TỪ MÀN HÌNH CHÍNH
+  const handleProfileStart = () => {
     if (!name.trim()) {
-      setError('⚠️ Vui lòng nhập tên biệt danh của bạn trước!');
+      setError('⚠️ Vui lòng nhập tên biệt danh của bạn!');
       return;
     }
     setError(null);
 
-    // Nếu có mã phòng mời trong URL, vào thẳng phòng đó luôn
+    // Nếu có sẵn mã phòng từ link mời, vào thẳng phòng đó
     if (roomCode.trim().length === 6) {
       handleJoinDirect(roomCode.trim().toUpperCase());
       return;
     }
 
-    // Chuyển sang Bước 2: Chọn Chế độ chơi / Tạo hoặc Vào phòng
+    // Chuyển sang Bước 2: CHỌN PHƯƠNG THỨC THAM GIA
     setStep('mode_select');
   };
 
@@ -132,7 +123,7 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
     }
   };
 
-  // BƯỚC 2: VÀO PHÒNG BẰNG MÃ
+  // BƯỚC 2: THAM GIA PHÒNG
   const handleJoinDirect = async (codeToJoin: string) => {
     const cleanCode = codeToJoin.trim().toUpperCase();
     if (cleanCode.length !== 6) {
@@ -160,286 +151,309 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
   };
 
   return (
-    <main className="screen gartic-setup-screen">
+    <div className="gartic-home-viewport">
       {/* ============================================================
-          BƯỚC 1: GIAO DIỆN CHỌN AVATAR & BIỆT DANH (CHUẨN GARTIC PHONE)
+          BƯỚC 1: GIAO DIỆN CHÍNH GARTIC PHONE CHUẨN 100% ẢNH MẪU
       ============================================================ */}
-      {step === 'profile' && (
-        <div className="gartic-setup-container fade-in">
-          {/* HEADER CHÍNH */}
-          <div className="gartic-main-header">
-            <div className="gartic-logo-badge">
-              <span className="logo-gartic">Đoán Đỉnh</span>
-              <span className="logo-phone">3D</span>
+      {step === 'profile' ? (
+        <div className="gartic-home-canvas fade-in">
+          {/* TOPBAR TRÊN CÙNG: NÚT NGÔN NGỮ */}
+          <div className="gartic-top-row">
+            <div className="gartic-lang-pill">
+              <Globe2 size={16} />
+              <span>VI</span>
             </div>
-            <div className="gartic-logo-subtitle">TAM SAO THẤT BẢN</div>
           </div>
 
-          <div className="gartic-cards-grid">
-            {/* CỘT TRÁI: HỒ SƠ & BẮT ĐẦU */}
-            <div className="gartic-profile-card">
-              <div className="gartic-tabs-header">
-                <button type="button" className="profile-tab active">
+          {/* HERO BANNER & LOGO */}
+          <div className="gartic-hero-section">
+            <div className="gartic-tober-sticker">
+              <span className="tober-text">Gartic TOBER</span>
+              <span className="tober-badge-sub">it's on!</span>
+            </div>
+
+            <div className="gartic-logo-master">
+              <div className="gartic-logo-frame">
+                <div className="gartic-brand-word">Gartic</div>
+                <div className="gartic-phone-word">
+                  <span>PH</span>
+                  <span className="phone-reel-circle">🎬</span>
+                  <span>NE</span>
+                </div>
+              </div>
+              <div className="gartic-tagline-text">TAM SAO THẤT BẢN</div>
+            </div>
+          </div>
+
+          {/* MAIN DUAL PANELS CONTAINER */}
+          <div className="gartic-dual-panels">
+            {/* PANEL TRÁI: HỒ SƠ & BẮT ĐẦU */}
+            <div className="gartic-main-card left-panel">
+              <div className="panel-tab-bar">
+                <button type="button" className="gartic-panel-tab active">
                   ẨN DANH
                 </button>
-                <button type="button" className="profile-tab" onClick={onBack}>
-                  ← QUAY LẠI
+                <button type="button" className="gartic-panel-tab inactive">
+                  ĐÃ XÁC THỰC
                 </button>
               </div>
 
-              {/* KHUNG AVATAR LỚN */}
-              <div className="avatar-selection-wrapper">
-                <button
-                  type="button"
-                  className="avatar-arrow-btn left"
-                  onClick={handlePrevAvatar}
-                  title="Nhân vật trước"
-                >
-                  <ChevronLeft size={24} />
-                </button>
-
-                <div
-                  className="gartic-avatar-big"
-                  style={{ backgroundColor: currentAvatar.bg }}
-                  onClick={handleRandomAvatar}
-                  title="Click để đổi nhân vật ngẫu nhiên"
-                >
-                  {currentAvatar.render(110)}
-                  <button
-                    type="button"
-                    className="avatar-dice-badge"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRandomAvatar();
-                    }}
-                    title="Đổi nhân vật ngẫu nhiên"
+              {/* PHẦN THÂN: AVATAR TRÒN & Ô NHẬP TÊN BÊN CẠNH */}
+              <div className="panel-body-horizontal">
+                {/* VÒNG TRÒN AVATAR LỚN CÓ NÚT RANDOM 🔄 */}
+                <div className="gartic-big-avatar-box">
+                  <div
+                    className="avatar-circle-core"
+                    style={{ backgroundColor: currentAvatar.bg }}
+                    onClick={handleRandomAvatar}
+                    title="Bấm để đổi avatar ngẫu nhiên"
                   >
-                    <RotateCw size={18} />
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  className="avatar-arrow-btn right"
-                  onClick={handleNextAvatar}
-                  title="Nhân vật tiếp theo"
-                >
-                  <ChevronRight size={24} />
-                </button>
-              </div>
-
-              <div className="avatar-character-name">{currentAvatar.name}</div>
-
-              {/* FORM NHẬP TÊN */}
-              <form onSubmit={handleProfileStart} className="gartic-profile-form">
-                <div className="input-label-tag">CHỌN MỘT NHÂN VẬT VÀ BIỆT DANH</div>
-                <input
-                  type="text"
-                  maxLength={18}
-                  placeholder="Nhập biệt danh của bạn..."
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (error) setError(null);
-                  }}
-                  className="gartic-name-input"
-                  autoFocus
-                />
-
-                {error && <div className="gartic-error-msg">{error}</div>}
-
-                {/* NÚT BẮT ĐẦU 3D TO BẢN */}
-                <button
-                  type="submit"
-                  className="gartic-start-big-btn"
-                  disabled={pending}
-                >
-                  <Play size={22} fill="currentColor" />
-                  <span>BẮT ĐẦU</span>
-                </button>
-              </form>
-            </div>
-
-            {/* CỘT PHẢI: HƯỚNG DẪN CÁCH CHƠI (CAROUSEL) */}
-            <div className="gartic-tutorial-card">
-              <div className="tutorial-header-label">CÁCH CHƠI</div>
-
-              <div className="tutorial-slide-content">
-                <div className="tutorial-illustration-circle">
-                  <span className="big-tut-emoji">{TUTORIAL_SLIDES[slideIndex].icon}</span>
-                </div>
-
-                <div className="tutorial-step-title">{TUTORIAL_SLIDES[slideIndex].title}</div>
-                <div className="tutorial-step-desc">{TUTORIAL_SLIDES[slideIndex].desc}</div>
-
-                <div className="gartic-carousel-controls">
-                  <button
-                    type="button"
-                    className="carousel-arrow"
-                    onClick={() =>
-                      setSlideIndex((prev) => (prev - 1 + TUTORIAL_SLIDES.length) % TUTORIAL_SLIDES.length)
-                    }
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-
-                  <div className="carousel-dots">
-                    {TUTORIAL_SLIDES.map((_, idx) => (
-                      <span
-                        key={idx}
-                        className={`dot ${idx === slideIndex ? 'active' : ''}`}
-                        onClick={() => setSlideIndex(idx)}
-                      />
-                    ))}
+                    {currentAvatar.render(130)}
                   </div>
-
                   <button
                     type="button"
-                    className="carousel-arrow"
-                    onClick={() =>
-                      setSlideIndex((prev) => (prev + 1) % TUTORIAL_SLIDES.length)
-                    }
+                    className="avatar-refresh-circle-btn"
+                    onClick={handleRandomAvatar}
+                    title="Đổi avatar ngẫu nhiên"
                   >
-                    <ChevronRight size={20} />
+                    <RotateCw size={19} />
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* ============================================================
-          BƯỚC 2: MÀN HÌNH CHỌN CHẾ ĐỘ & TẠO / VÀO PHÒNG
-      ============================================================ */}
-      {step === 'mode_select' && (
-        <div className="gartic-mode-container fade-in">
-          {/* HEADER CHUYỂN BƯỚC */}
-          <div className="mode-step-topbar">
-            <button
-              type="button"
-              className="mode-back-btn"
-              onClick={() => setStep('profile')}
-            >
-              <ArrowLeft size={18} /> Đổi nhân vật / tên
-            </button>
-
-            <div className="user-profile-badge">
-              <div className="user-mini-avatar" style={{ backgroundColor: currentAvatar.bg }}>
-                {currentAvatar.render(28)}
-              </div>
-              <span className="user-badge-name">{name}</span>
-            </div>
-          </div>
-
-          <h2 className="mode-select-headline">CHỌN PHƯƠNG THỨC THAM GIA</h2>
-          <p className="mode-select-sub">Bạn muốn tạo phòng mới làm chủ phòng hay tham gia vào phòng cùng bạn bè?</p>
-
-          {error && <div className="gartic-error-msg" style={{ marginBottom: 16 }}>{error}</div>}
-
-          {slowNotice && (
-            <div className="server-wakeup-toast fade-in" style={{ marginBottom: 16 }}>
-              <LoaderCircle size={18} className="spin text-amber-400" />
-              <span>Đang kết nối máy chủ Render, vui lòng đợi vài giây nhé...</span>
-            </div>
-          )}
-
-          <div className="mode-cards-grid">
-            {/* THẺ 1: TẠO PHÒNG MỚI */}
-            <div className="mode-choice-card highlight">
-              <div className="choice-badge">LÀM CHỦ PHÒNG</div>
-              <h3 className="choice-title">Tạo phòng mới</h3>
-              <p className="choice-desc">Tạo mã phòng và mời bạn bè tham gia tranh tài.</p>
-
-              <div className="choice-options-group">
-                <span className="options-label">Chọn chế độ:</span>
-                <div className="choice-tabs">
-                  <button
-                    type="button"
-                    className={`choice-tab-btn ${selectedMode === 'telephone' ? 'active' : ''}`}
-                    onClick={() => setSelectedMode('telephone')}
-                  >
-                    <div className="tab-btn-title">
-                      <span>🌀 Tam Sao Thất Bản</span>
-                      <span className="tab-hot-tag">HOT</span>
-                    </div>
-                    <small>Mỗi người 1 cuốn sổ song song, công chiếu Album cuối ván!</small>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`choice-tab-btn ${selectedMode === 'classic' ? 'active' : ''}`}
-                    onClick={() => setSelectedMode('classic')}
-                  >
-                    <div className="tab-btn-title">
-                      <span>⚔️ Đoán Hình 1v1</span>
-                    </div>
-                    <small>1 người vẽ, 1 người đoán tính điểm vô địch</small>
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="choice-action-btn primary"
-                onClick={handleCreateRoom}
-                disabled={pending}
-              >
-                {pending ? (
-                  <>
-                    <LoaderCircle size={20} className="spin" /> Đang tạo phòng...
-                  </>
-                ) : (
-                  <>
-                    <span>TẠO PHÒNG & MỜI BẠN BÈ</span>
-                    <ArrowRight size={20} />
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* THẺ 2: THAM GIA PHÒNG ĐÃ CÓ */}
-            <div className="mode-choice-card">
-              <div className="choice-badge secondary">THAM GIA PHÒNG</div>
-              <h3 className="choice-title">Vào phòng cùng bạn bè</h3>
-              <p className="choice-desc">Nhập mã phòng gồm 6 ký tự được bạn bè chia sẻ.</p>
-
-              <div className="choice-input-group">
-                <label className="options-label">Mã phòng (6 ký tự):</label>
-                <div className="join-code-input-wrapper">
-                  <KeyRound size={20} className="code-icon" />
+                {/* Ô NHẬP BIỆT DANH */}
+                <div className="nickname-input-column">
+                  <label className="nickname-field-title">
+                    CHỌN MỘT NHÂN VẬT VÀ BIỆT DANH
+                  </label>
                   <input
                     type="text"
-                    maxLength={6}
-                    placeholder="VD: 84ZHXK"
-                    value={roomCode}
-                    onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                    className="join-code-input"
+                    maxLength={18}
+                    placeholder="namm"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleProfileStart();
+                    }}
+                    className="gartic-purple-pill-input"
+                    autoFocus
                   />
+                  {error && <div className="gartic-field-error">{error}</div>}
                 </div>
               </div>
 
+              {/* NÚT BẮT ĐẦU 3D MÀU TÍM NHẠT / TRẮNG DÀY DẶN */}
+              <div className="start-btn-center-box">
+                <button
+                  type="button"
+                  className="gartic-chunky-start-button"
+                  onClick={handleProfileStart}
+                  disabled={pending}
+                >
+                  <span className="green-play-arrow">▶</span>
+                  <span className="start-button-text">BẮT ĐẦU</span>
+                </button>
+              </div>
+            </div>
+
+            {/* PANEL PHẢI: CÁCH CHƠI (TUTORIAL) */}
+            <div className="gartic-main-card right-panel">
+              <div className="tutorial-green-header">CÁCH CHƠI</div>
+
+              <div className="tutorial-graphic-box">
+                <div className="tutorial-duo-avatars">
+                  <span className="tut-emoji">{TUTORIAL_SLIDES[slideIndex].emoji1}</span>
+                  <span className="tut-emoji secondary">{TUTORIAL_SLIDES[slideIndex].emoji2}</span>
+                </div>
+              </div>
+
+              <div className="tutorial-copy-box">
+                <h4 className="tutorial-headline-title">{TUTORIAL_SLIDES[slideIndex].title}</h4>
+                <p className="tutorial-headline-desc">{TUTORIAL_SLIDES[slideIndex].desc}</p>
+              </div>
+
+              {/* ĐIỀU HƯỚNG CAROUSEL: < ( ) . . . > */}
+              <div className="tutorial-carousel-nav">
+                <button
+                  type="button"
+                  className="carousel-chevron-btn"
+                  onClick={() =>
+                    setSlideIndex((prev) => (prev - 1 + TUTORIAL_SLIDES.length) % TUTORIAL_SLIDES.length)
+                  }
+                >
+                  ◀
+                </button>
+                <div className="carousel-dot-indicators">
+                  {TUTORIAL_SLIDES.map((_, idx) => (
+                    <span
+                      key={idx}
+                      className={`carousel-dot ${idx === slideIndex ? 'active' : ''}`}
+                      onClick={() => setSlideIndex(idx)}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="carousel-chevron-btn"
+                  onClick={() =>
+                    setSlideIndex((prev) => (prev + 1) % TUTORIAL_SLIDES.length)
+                  }
+                >
+                  ▶
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* FOOTER BAR: TẢI ỨNG DỤNG */}
+          <div className="gartic-bottom-badge-row">
+            <div className="app-download-pill">
+              <span className="app-badge-icon">🎮</span>
+              <span className="app-badge-text">TẢI ỨNG DỤNG!</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ============================================================
+            BƯỚC 2: CHỌN PHƯƠNG THỨC THAM GIA
+        ============================================================ */
+        <div className="gartic-mode-select-viewport fade-in">
+          <div className="gartic-mode-card-container">
+            {/* THANH TOP BAR */}
+            <div className="mode-nav-header">
               <button
                 type="button"
-                className="choice-action-btn secondary"
-                onClick={() => handleJoinDirect(roomCode)}
-                disabled={pending || roomCode.trim().length !== 6}
+                className="mode-back-button"
+                onClick={() => setStep('profile')}
               >
-                {pending ? (
-                  <>
-                    <LoaderCircle size={20} className="spin" /> Đang vào phòng...
-                  </>
-                ) : (
-                  <>
-                    <span>VÀO PHÒNG NGAY</span>
-                    <ArrowRight size={20} />
-                  </>
-                )}
+                <ArrowLeft size={18} /> Đổi nhân vật / tên
               </button>
+
+              <div className="current-user-pill">
+                <div className="user-avatar-mini" style={{ backgroundColor: currentAvatar.bg }}>
+                  {currentAvatar.render(26)}
+                </div>
+                <span className="user-name-display">{name}</span>
+              </div>
+            </div>
+
+            <h2 className="mode-page-title">CHỌN PHƯƠNG THỨC THAM GIA</h2>
+            <p className="mode-page-subtitle">
+              Bạn muốn tạo phòng mới làm chủ phòng hay tham gia vào phòng cùng bạn bè?
+            </p>
+
+            {error && <div className="mode-error-alert">{error}</div>}
+
+            {slowNotice && (
+              <div className="mode-warmup-notice fade-in">
+                <LoaderCircle size={18} className="spin text-amber-400" />
+                <span>Đang kết nối máy chủ Render, vui lòng đợi vài giây nhé...</span>
+              </div>
+            )}
+
+            <div className="mode-options-grid">
+              {/* LỰA CHỌN 1: TẠO PHÒNG MỚI */}
+              <div className="mode-option-card host-card">
+                <div className="mode-badge-tag">LÀM CHỦ PHÒNG</div>
+                <h3 className="mode-card-title">Tạo phòng mới</h3>
+                <p className="mode-card-description">
+                  Tạo mã phòng riêng và mời bạn bè vào tham gia tranh tài.
+                </p>
+
+                <div className="mode-selector-block">
+                  <span className="selector-title">Chọn chế độ chơi:</span>
+                  <div className="mode-buttons-stack">
+                    <button
+                      type="button"
+                      className={`mode-toggle-button ${selectedMode === 'telephone' ? 'active' : ''}`}
+                      onClick={() => setSelectedMode('telephone')}
+                    >
+                      <div className="toggle-btn-header">
+                        <span>🌀 Tam Sao Thất Bản</span>
+                        <span className="hot-pill">KHUYÊN DÙNG</span>
+                      </div>
+                      <small>Mỗi người 1 cuốn sổ song song, công chiếu Album cười nghiêng ngả cuối ván!</small>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`mode-toggle-button ${selectedMode === 'classic' ? 'active' : ''}`}
+                      onClick={() => setSelectedMode('classic')}
+                    >
+                      <div className="toggle-btn-header">
+                        <span>⚔️ Đoán Hình 1v1</span>
+                      </div>
+                      <small>1 người vẽ, 1 người đoán giành cúp vô địch theo lượt</small>
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="mode-primary-submit-btn"
+                  onClick={handleCreateRoom}
+                  disabled={pending}
+                >
+                  {pending ? (
+                    <>
+                      <LoaderCircle size={20} className="spin" /> Đang chuẩn bị phòng...
+                    </>
+                  ) : (
+                    <>
+                      <span>TẠO PHÒNG & MỜI BẠN BÈ</span>
+                      <ArrowRight size={20} />
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* LỰA CHỌN 2: THAM GIA PHÒNG */}
+              <div className="mode-option-card join-card">
+                <div className="mode-badge-tag join-badge">THAM GIA PHÒNG</div>
+                <h3 className="mode-card-title">Vào phòng cùng bạn bè</h3>
+                <p className="mode-card-description">
+                  Nhập mã phòng 6 ký tự được bạn bè chia sẻ để cùng chơi.
+                </p>
+
+                <div className="join-code-block">
+                  <label className="selector-title">Mã phòng (6 ký tự):</label>
+                  <div className="code-input-wrapper">
+                    <KeyRound size={22} className="key-icon" />
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="VD: 84ZHXK"
+                      value={roomCode}
+                      onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                      className="room-code-input"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="mode-secondary-submit-btn"
+                  onClick={() => handleJoinDirect(roomCode)}
+                  disabled={pending || roomCode.trim().length !== 6}
+                >
+                  {pending ? (
+                    <>
+                      <LoaderCircle size={20} className="spin" /> Đang vào phòng...
+                    </>
+                  ) : (
+                    <>
+                      <span>VÀO PHÒNG NGAY</span>
+                      <ArrowRight size={20} />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

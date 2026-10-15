@@ -1847,436 +1847,803 @@ h1,h2,h3,p { margin-top:0; }
   border: 2px solid rgba(255, 255, 255, 0.2);
   background: rgba(0, 0, 0, 0.25);
   color: #ffffff;
-  font-weight: 800;
-  font-size: 13px;
-  cursor: pointer;
 }
 
-.gartic-back-btn {
+/* ============================================================
+   GIAO DIỆN CHÍNH GARTIC PHONE CHUẨN 100% THEO ẢNH MẪU
+============================================================ */
+.gartic-home-viewport {
+  min-height: 100vh;
+  width: 100%;
+  background: radial-gradient(circle at 50% 30%, #6d1b96 0%, #480d6b 50%, #24043b 100%);
+  background-image: 
+    radial-gradient(rgba(216, 180, 254, 0.12) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 50% 30%, #6d1b96 0%, #480d6b 50%, #24043b 100%);
+  background-size: 26px 26px, 100% 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(14px, 3vw, 24px);
+  color: #ffffff;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.gartic-home-canvas {
+  width: min(1040px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* TOPBAR: [🌐 VI] */
+.gartic-top-row {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 2px;
+}
+
+.gartic-lang-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  color: #d1c4e9;
-  font-weight: 700;
+  background: rgba(30, 4, 48, 0.6);
+  border: 1.5px solid rgba(216, 180, 254, 0.3);
+  color: #ffffff;
   font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.2s;
 }
-.gartic-back-btn:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
+.gartic-lang-pill:hover {
+  background: rgba(48, 8, 77, 0.9);
+  border-color: #f7d55c;
 }
 
-/* LOGO BONG BÓNG 3D */
-.gartic-main-brand {
-  margin: 6px 0 24px;
-  text-align: center;
+/* HERO: GARTIC TOBER & LOGO */
+.gartic-hero-section {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
 }
 
-.gartic-bubble-logo {
-  display: inline-flex;
+.gartic-tober-sticker {
+  position: absolute;
+  left: 20px;
+  top: 10px;
+  transform: rotate(-10deg);
+  display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.logo-text {
-  font-size: clamp(38px, 7vw, 64px);
+.tober-text {
+  font-size: clamp(22px, 3.5vw, 32px);
   font-weight: 1000;
-  letter-spacing: -0.03em;
   color: #ffffff;
-  text-transform: uppercase;
   text-shadow: 
-    0 4px 0 #3a0050,
-    0 8px 0 #200030,
-    0 14px 28px rgba(0, 0, 0, 0.6);
-  -webkit-text-stroke: 3px #180026;
+    0 3px 0 #3a0050,
+    0 6px 0 #200030,
+    0 10px 20px rgba(0, 0, 0, 0.6);
+  -webkit-text-stroke: 2px #290038;
+  letter-spacing: -0.02em;
 }
 
-.sub-logo-tag {
-  display: inline-block;
-  padding: 3px 14px;
-  border-radius: 20px;
-  background: #180026;
-  color: #f7d55c;
+.tober-badge-sub {
   font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.12em;
-  margin-top: -6px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  color: #f7d55c;
+  background: #240033;
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-top: -4px;
+  letter-spacing: 0.05em;
 }
 
-/* KHUNG 2 CỘT CHUẨN GARTIC PHONE */
-.gartic-setup-container {
-  width: min(960px, 100%);
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+/* LOGO CHÍNH */
+.gartic-logo-master {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gartic-logo-frame {
+  background: #151b3b;
+  border: 4px solid #ffffff;
+  border-radius: 28px;
+  padding: 4px 34px 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.gartic-brand-word {
+  font-size: 20px;
+  font-weight: 1000;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  margin-bottom: -4px;
+}
+
+.gartic-phone-word {
+  display: flex;
+  align-items: center;
+  font-size: clamp(34px, 5.5vw, 48px);
+  font-weight: 1000;
+  color: #ffffff;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-shadow: 0 4px 0 #0d122b;
+}
+
+.phone-reel-circle {
+  font-size: 28px;
+  margin: 0 2px;
+  display: inline-block;
+  animation: spin 8s linear infinite;
+}
+
+.gartic-tagline-text {
+  font-size: 13px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.16em;
+  margin-top: 6px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* 2 THẺ CHÍNH ĐỨNG NGANG NHAU (DUAL PANELS) */
+.gartic-dual-panels {
+  display: flex;
   gap: 20px;
+  width: 100%;
   align-items: stretch;
 }
 
-/* CỘT PROFILE */
-.gartic-profile-card {
-  background: rgba(45, 9, 64, 0.92);
-  border: 3px solid #6b1b9a;
+.gartic-main-card {
+  background: rgba(58, 12, 87, 0.88);
+  border: 2px solid rgba(192, 132, 252, 0.35);
   border-radius: 26px;
-  padding: 24px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+/* PANEL TRÁI: HỒ SƠ */
+.gartic-main-card.left-panel {
+  flex: 1.15;
+  padding: 16px 24px 24px;
   display: flex;
   flex-direction: column;
-}
-
-.gartic-nav-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  background: #200530;
-  padding: 6px;
-  border-radius: 16px;
-  margin-bottom: 22px;
-}
-
-.gartic-nav-tab {
-  padding: 10px;
-  border-radius: 12px;
-  border: 0;
-  background: transparent;
-  color: #b39ddb;
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.gartic-nav-tab.active {
-  background: #7b1fa2;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(123, 31, 162, 0.4);
-}
-
-.gartic-profile-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.gartic-avatar-picker-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 16px;
-  border-radius: 20px;
-  border: 2px solid #511374;
-}
-
-/* VÒNG TRÒN AVATAR LỚN CÓ NÚT RANDOM */
-.gartic-big-avatar-wrapper {
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  border: 4px solid #ffffff;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  flex-shrink: 0;
-  transition: transform 0.2s;
-}
-
-.avatar-icon-char {
-  font-size: 46px;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
-}
-
-.gartic-random-avatar-btn {
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #f7d55c;
-  color: #1a0028;
-  border: 3px solid #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s;
-}
-.gartic-random-avatar-btn:hover {
-  transform: rotate(90deg) scale(1.1);
-}
-
-.gartic-nickname-input-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.gartic-field-label {
-  font-size: 11px;
-  font-weight: 900;
-  color: #e1bee7;
-  letter-spacing: 0.05em;
-}
-
-.gartic-nickname-input {
-  width: 100%;
-  height: 48px;
-  padding: 0 16px;
-  border-radius: 14px;
-  border: 2px solid #7b1fa2;
-  background: #220333;
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 800;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.gartic-nickname-input:focus {
-  border-color: #f7d55c;
-  box-shadow: 0 0 0 3px rgba(247, 213, 92, 0.25);
-}
-
-.gartic-room-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.gartic-setting-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.gartic-select-box, .gartic-code-input {
-  width: 100%;
-  height: 44px;
-  border-radius: 12px;
-  border: 2px solid #511374;
-  background: #200530;
-  color: #ffffff;
-  padding: 0 12px;
-  font-weight: 700;
-  outline: none;
-}
-.gartic-code-input {
-  font-size: 18px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  font-family: var(--app-font-mono, monospace);
-  text-align: center;
-}
-
-.gartic-score-target-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-}
-
-.gartic-target-btn {
-  padding: 8px 6px;
-  border-radius: 12px;
-  border: 2px solid #511374;
-  background: #200530;
-  color: #d1c4e9;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: all 0.15s;
-}
-.gartic-target-btn strong {
-  font-size: 13px;
-}
-.gartic-target-btn small {
-  font-size: 10px;
-  opacity: 0.7;
-}
-.gartic-target-btn.active {
-  border-color: #f7d55c;
-  background: rgba(247, 213, 92, 0.18);
-  color: #f7d55c;
-  box-shadow: 0 0 10px rgba(247, 213, 92, 0.2);
-}
-
-.gartic-error-banner {
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid #ef4444;
-  color: #fca5a5;
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-}
-
-/* NÚT BẮT ĐẦU CHUẨN GARTIC PHONE */
-.gartic-start-play-btn {
-  width: 100%;
-  height: 56px;
-  border-radius: 20px;
-  border: 3px solid #1a0028;
-  background: #ffffff;
-  color: #3a0050;
-  font-size: 18px;
-  font-weight: 1000;
-  letter-spacing: 0.05em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  box-shadow: 0 6px 0 #b39ddb, 0 10px 24px rgba(0, 0, 0, 0.4);
-  transition: all 0.12s ease;
-  margin-top: 8px;
-}
-.gartic-start-play-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 0 #b39ddb, 0 14px 28px rgba(0, 0, 0, 0.5);
-}
-.gartic-start-play-btn:active {
-  transform: translateY(4px);
-  box-shadow: 0 2px 0 #b39ddb, 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-.gartic-start-play-btn .play-icon {
-  color: #10b981;
-}
-
-.gartic-wake-notice {
-  font-size: 12px;
-  color: #f7d55c;
-  text-align: center;
-  margin-top: 4px;
-}
-
-/* CỘT CÁCH CHƠI & CAROUSEL */
-.gartic-tutorial-card {
-  background: rgba(45, 9, 64, 0.92);
-  border: 3px solid #6b1b9a;
-  border-radius: 26px;
-  padding: 24px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
   justify-content: space-between;
 }
 
-.gartic-tutorial-heading {
-  font-size: 16px;
+.panel-tab-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.gartic-panel-tab {
+  border: none;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 8px 18px;
+  border-radius: 12px 12px 0 0;
+  transition: all 0.2s;
+}
+
+.gartic-panel-tab.active {
+  background: rgba(33, 5, 52, 0.95);
+  color: #22c55e;
+  border-bottom: 3px solid #22c55e;
+}
+
+.gartic-panel-tab.inactive {
+  background: transparent;
+  color: #c084fc;
+  opacity: 0.7;
+}
+
+/* PHẦN THÂN HORIZONTAL: AVATAR + Ô NHẬP TÊN */
+.panel-body-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.gartic-big-avatar-box {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  flex-shrink: 0;
+}
+
+.avatar-circle-core {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 5px solid #ffffff;
+  box-shadow: 
+    0 10px 26px rgba(0, 0, 0, 0.45),
+    inset 0 4px 14px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.avatar-circle-core:hover {
+  transform: scale(1.04);
+}
+
+.avatar-refresh-circle-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3.5px solid #00b4d8;
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.avatar-refresh-circle-btn:hover {
+  transform: rotate(90deg) scale(1.15);
+  border-color: #f7d55c;
+  color: #581c87;
+}
+
+.nickname-input-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nickname-field-title {
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.gartic-purple-pill-input {
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+  border: 2px solid #a855f7;
+  background: #5b1480;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  padding: 0 18px;
+  outline: none;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s;
+}
+.gartic-purple-pill-input:focus {
+  border-color: #f7d55c;
+  box-shadow: 0 0 16px rgba(247, 213, 92, 0.4), inset 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.gartic-field-error {
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* NÚT BẮT ĐẦU 3D CHUẨN GARTIC PHONE */
+.start-btn-center-box {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.gartic-chunky-start-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 13px 44px;
+  border-radius: 20px;
+  background: #f7f1fb;
+  border: 3.5px solid #28043c;
+  box-shadow: 0 6px 0 #28043c, 0 12px 24px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.gartic-chunky-start-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #28043c, 0 16px 28px rgba(0, 0, 0, 0.55);
+}
+.gartic-chunky-start-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #28043c, 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.green-play-arrow {
+  color: #22c55e;
+  font-size: 20px;
+  font-weight: 900;
+  -webkit-text-stroke: 1.5px #28043c;
+}
+
+.start-button-text {
+  color: #28043c;
+  font-size: 20px;
   font-weight: 1000;
-  color: #f7d55c;
+  letter-spacing: 0.05em;
+}
+
+/* PANEL PHẢI: CÁCH CHƠI (TUTORIAL) */
+.gartic-main-card.right-panel {
+  flex: 0.85;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.tutorial-green-header {
+  font-size: 17px;
+  font-weight: 1000;
+  color: #22c55e;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.gartic-tutorial-carousel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  margin: auto 0;
+.tutorial-graphic-box {
+  margin: 12px 0;
 }
 
-.gartic-tutorial-graphic {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: rgba(123, 31, 162, 0.3);
-  border: 3px solid #7b1fa2;
+.tutorial-duo-avatars {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  gap: 10px;
 }
 
-.big-tut-emoji {
-  font-size: 52px;
+.tut-emoji {
+  font-size: 56px;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35));
+}
+.tut-emoji.secondary {
+  transform: scale(0.9);
 }
 
-.tutorial-step-title {
+.tutorial-copy-box {
+  margin-bottom: 12px;
+}
+
+.tutorial-headline-title {
   font-size: 16px;
   font-weight: 900;
   color: #ffffff;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
-.tutorial-step-desc {
-  font-size: 13px;
-  color: #d1c4e9;
-  line-height: 1.55;
-  max-width: 260px;
-  margin-bottom: 20px;
+.tutorial-headline-desc {
+  font-size: 13.5px;
+  color: #e9d5ff;
+  line-height: 1.5;
+  max-width: 280px;
 }
 
-.gartic-carousel-controls {
+/* CAROUSEL CONTROLS: < ( ) . . . > */
+.tutorial-carousel-nav {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
-.carousel-arrow {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid #7b1fa2;
-  background: #200530;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.carousel-chevron-btn {
+  background: none;
+  border: none;
+  color: #d8b4e2;
+  font-size: 18px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: transform 0.15s, color 0.15s;
 }
-.carousel-arrow:hover {
-  background: #7b1fa2;
-  transform: scale(1.1);
+.carousel-chevron-btn:hover {
+  color: #ffffff;
+  transform: scale(1.2);
 }
 
-.carousel-dots {
+.carousel-dot-indicators {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.carousel-dots .dot {
-  width: 9px;
-  height: 9px;
+.carousel-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #511374;
+  background: #6b1b9a;
   cursor: pointer;
   transition: all 0.2s;
 }
-.carousel-dots .dot.active {
-  width: 20px;
-  border-radius: 8px;
-  background: #f7d55c;
-  box-shadow: 0 0 8px rgba(247, 213, 92, 0.6);
+
+.carousel-dot.active {
+  width: 18px;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
 }
 
-/* RESPONSIVE MOBILE CHO MÀN HÌNH SETUP */
-@media (max-width: 860px) {
-  .gartic-setup-container {
-    grid-template-columns: 1fr;
-    gap: 16px;
+/* FOOTER BAR: TẢI ỨNG DỤNG */
+.gartic-bottom-badge-row {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.app-download-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 14px;
+  background: rgba(30, 4, 48, 0.6);
+  border: 1.5px solid rgba(216, 180, 254, 0.25);
+  font-size: 12px;
+  font-weight: 800;
+  color: #f7d55c;
+}
+
+/* RESPONSIVE CHO MÀN HÌNH CHÍNH GARTIC */
+@media (max-width: 880px) {
+  .gartic-dual-panels {
+    flex-direction: column;
   }
-  .gartic-tutorial-card {
+  .gartic-tober-sticker {
     display: none;
   }
-  .gartic-profile-card {
-    padding: 18px;
+  .panel-body-horizontal {
+    flex-direction: column;
+    text-align: center;
   }
 }
+
+/* ============================================================
+   BƯỚC 2: MÀN HÌNH CHỌN PHƯƠNG THỨC THAM GIA
+============================================================ */
+.gartic-mode-select-viewport {
+  width: min(880px, 100%);
+  margin: 0 auto;
+}
+
+.gartic-mode-card-container {
+  background: rgba(45, 9, 64, 0.94);
+  border: 3px solid #6b1b9a;
+  border-radius: 28px;
+  padding: clamp(20px, 4vw, 36px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.mode-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.mode-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1.5px solid #8b5cf6;
+  background: rgba(139, 92, 246, 0.15);
+  color: #e9d5ff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mode-back-button:hover {
+  background: rgba(139, 92, 246, 0.3);
+  color: #ffffff;
+}
+
+.current-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 24px;
+  background: #1e052d;
+  border: 2px solid #6b1b9a;
+}
+
+.user-avatar-mini {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1.5px solid #ffffff;
+}
+
+.user-name-display {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mode-page-title {
+  font-size: clamp(22px, 4vw, 32px);
+  font-weight: 1000;
+  color: #ffffff;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.mode-page-subtitle {
+  color: #d8b4e2;
+  font-size: 14px;
+  margin-bottom: 26px;
+}
+
+.mode-error-alert {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1.5px solid #ef4444;
+  color: #fca5a5;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.mode-warmup-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fcd34d;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.mode-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  text-align: left;
+}
+
+.mode-option-card {
+  background: #240536;
+  border: 2.5px solid #581c87;
+  border-radius: 22px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s;
+}
+
+.mode-option-card.host-card {
+  border-color: #a855f7;
+  background: linear-gradient(180deg, #32084c 0%, #200430 100%);
+  box-shadow: 0 12px 30px rgba(168, 85, 247, 0.2);
+}
+
+.mode-badge-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  width: fit-content;
+}
+
+.mode-badge-tag.join-badge {
+  background: #0284c7;
+}
+
+.mode-card-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.mode-card-description {
+  font-size: 13px;
+  color: #d8b4e2;
+  margin-bottom: 18px;
+}
+
+.mode-selector-block {
+  margin-bottom: 20px;
+}
+
+.selector-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.mode-buttons-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mode-toggle-button {
+  background: #140222;
+  border: 2px solid #581c87;
+  border-radius: 14px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #d8b4e2;
+}
+
+.mode-toggle-button:hover {
+  border-color: #a855f7;
+  background: #240536;
+}
+
+.mode-toggle-button.active {
+  border-color: #f7d55c;
+  background: rgba(247, 213, 92, 0.12);
+  color: #ffffff;
+}
+
+.toggle-btn-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.hot-pill {
+  font-size: 10px;
+  font-weight: 900;
+  background: #ef4444;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.mode-toggle-button small {
+  font-size: 11.5px;
+  color: #b088cf;
+  display: block;
+}
+
+.mode-primary-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 16px;
+  border: none;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+}
+
+.mode-primary-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(34, 197, 94, 0.55);
+}
+
+.mode-secondary-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 16px;
+  border: none;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.4);
+}
+
+.mode-secondary-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.55);
+}
+
+.mode-primary-submit-btn:disabled, .mode-secondary-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.join-code-block {
+  margin-bottom: 24px;
+}
+
+.code-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.key-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+}
+
+.room-code-input {
+  width: 100%;
+  padding: 14px 14px 14px 46px;
+  border-radius: 14px;
+  border: 2px solid #581c87;
+  background: #140222;
+  color: #f7d55c;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.room-code-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 15px rgba(2, 132, 199, 0.35);
+}
+
+@media (max-width: 768px) {
+  .mode-options-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 /* ============================================================
    CHẾ ĐỘ CHƠI: TAM SAO THẤT BẢN (TELEPHONE MODE)

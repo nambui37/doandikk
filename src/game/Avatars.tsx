@@ -8,30 +8,54 @@ export interface AvatarItem {
 }
 
 export const AVATAR_LIST: AvatarItem[] = [
-  // 1. Hiệp sĩ (Knight - Chuẩn như ảnh mẫu của user)
+  // 1. Hiệp sĩ (Knight - Chuẩn 100% như ảnh Gartic Phone)
   {
     id: 'knight',
-    name: 'Hiệp sĩ dũng cảm',
-    bg: '#0284c7',
-    render: (size = 100) => (
-      <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-        {/* Áo đỏ */}
-        <path d="M25 82 C25 65 75 65 75 82 L75 92 L25 92 Z" fill="#e11d48" stroke="#1e293b" strokeWidth="4" />
-        <path d="M42 70 L58 70 L54 92 L46 92 Z" fill="#fbbf24" stroke="#1e293b" strokeWidth="3" />
-        {/* Mũ sắt */}
-        <circle cx="50" cy="46" r="28" fill="#cbd5e1" stroke="#1e293b" strokeWidth="4" />
-        <path d="M22 46 C22 30 78 30 78 46 L76 60 C76 68 64 74 50 74 C36 74 24 68 24 60 Z" fill="#94a3b8" stroke="#1e293b" strokeWidth="4" />
-        {/* Chỏm lông đỏ */}
-        <path d="M42 20 C42 12 58 12 58 20 L55 26 L45 26 Z" fill="#e11d48" stroke="#1e293b" strokeWidth="3" />
-        <path d="M47 12 C47 6 53 6 53 12 L52 20 L48 20 Z" fill="#f43f5e" />
-        {/* Khe nhìn mũ sắt */}
-        <rect x="30" y="44" width="40" height="18" rx="6" fill="#1e293b" />
-        {/* Nan che mặt */}
-        <line x1="36" y1="46" x2="36" y2="60" stroke="#64748b" strokeWidth="3.5" strokeLinecap="round" />
-        <line x1="43" y1="46" x2="43" y2="60" stroke="#64748b" strokeWidth="3.5" strokeLinecap="round" />
-        <line x1="50" y1="46" x2="50" y2="60" stroke="#64748b" strokeWidth="3.5" strokeLinecap="round" />
-        <line x1="57" y1="46" x2="57" y2="60" stroke="#64748b" strokeWidth="3.5" strokeLinecap="round" />
-        <line x1="64" y1="46" x2="64" y2="60" stroke="#64748b" strokeWidth="3.5" strokeLinecap="round" />
+    name: 'Hiệp sĩ Gartic',
+    bg: '#00b4d8',
+    render: (size = 140) => (
+      <svg width={size} height={size} viewBox="0 0 140 140" fill="none">
+        {/* Nền cổ áo đỏ */}
+        <path
+          d="M32 110 C32 90 108 90 108 110 L112 135 L28 135 Z"
+          fill="#e63946"
+          stroke="#0b1b2b"
+          strokeWidth="6"
+          strokeLinejoin="round"
+        />
+        <path d="M56 100 L84 100 L82 135 L58 135 Z" fill="#ffffff" stroke="#0b1b2b" strokeWidth="4" />
+
+        {/* Chỏm lông đỏ 3 múi trên mũ */}
+        <path
+          d="M56 26 C56 12 70 6 70 6 C70 6 84 12 84 26 L80 34 L60 34 Z"
+          fill="#e63946"
+          stroke="#0b1b2b"
+          strokeWidth="5"
+          strokeLinejoin="round"
+        />
+        <path d="M62 16 C62 8 70 8 70 16 Z" fill="#ff4d6d" />
+
+        {/* Vỏ mũ sắt tròn */}
+        <circle cx="70" cy="62" r="38" fill="#cbebf0" stroke="#0b1b2b" strokeWidth="6" />
+
+        {/* Phần che mặt hiệp sĩ (Visor) */}
+        <path
+          d="M36 60 C36 44 104 44 104 60 L100 86 C100 96 86 102 70 102 C54 102 40 96 40 86 Z"
+          fill="#8ad4e2"
+          stroke="#0b1b2b"
+          strokeWidth="6"
+          strokeLinejoin="round"
+        />
+
+        {/* Viền trán mũ */}
+        <path d="M38 56 Q70 48 102 56" stroke="#0b1b2b" strokeWidth="6" strokeLinecap="round" />
+
+        {/* 5 khe thoáng khí / nhìn trên visor */}
+        <rect x="48" y="68" width="6" height="20" rx="3" fill="#0b1b2b" />
+        <rect x="59" y="68" width="6" height="22" rx="3" fill="#0b1b2b" />
+        <rect x="70" y="68" width="6" height="22" rx="3" fill="#0b1b2b" />
+        <rect x="81" y="68" width="6" height="22" rx="3" fill="#0b1b2b" />
+        <rect x="92" y="68" width="6" height="20" rx="3" fill="#0b1b2b" />
       </svg>
     ),
   },
