@@ -395,19 +395,17 @@ export function performRoomAction(
       };
 
       if (isCorrect) {
-        // Cộng 1 điểm cho người đoán
+        // Chỉ cộng 1 điểm duy nhất cho người đoán đúng
         room.scores[playerIndex] = (room.scores[playerIndex] || 0) + 1;
-        // Cộng thêm 1 điểm cho người vẽ vì vẽ tốt
-        room.scores[drawerIndex] = (room.scores[drawerIndex] || 0) + 1;
 
         room.lastRevealedWord = currentWord;
         room.currentPhase = 'reveal';
         room.phaseEndsAt = now + REVEAL_DURATION_MS;
 
-        // Kiểm tra xem đã có người chạm mốc điểm thắng chưa
-        if (room.scores[playerIndex] >= room.targetScore || room.scores[drawerIndex] >= room.targetScore) {
+        // Người đoán đạt đủ điểm mục tiêu trước sẽ chiến thắng
+        if (room.scores[playerIndex] >= room.targetScore) {
           room.status = 'results';
-          room.winnerIndex = room.scores[playerIndex] >= room.targetScore ? playerIndex : drawerIndex;
+          room.winnerIndex = playerIndex;
           room.phaseEndsAt = null;
         }
       }

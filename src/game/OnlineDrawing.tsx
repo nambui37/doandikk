@@ -93,12 +93,29 @@ export default function OnlineDrawing({
         return;
       }
 
+      if (stroke.points.length === 2) {
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x * width, stroke.points[0].y * height);
+        ctx.lineTo(stroke.points[1].x * width, stroke.points[1].y * height);
+        ctx.stroke();
+        return;
+      }
+
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x * width, stroke.points[0].y * height);
-      for (let i = 1; i < stroke.points.length; i++) {
-        const pt = stroke.points[i];
-        ctx.lineTo(pt.x * width, pt.y * height);
+      for (let i = 1; i < stroke.points.length - 1; i++) {
+        const xc = ((stroke.points[i].x + stroke.points[i + 1].x) / 2) * width;
+        const yc = ((stroke.points[i].y + stroke.points[i + 1].y) / 2) * height;
+        ctx.quadraticCurveTo(stroke.points[i].x * width, stroke.points[i].y * height, xc, yc);
       }
+      const last = stroke.points[stroke.points.length - 1];
+      const secondLast = stroke.points[stroke.points.length - 2];
+      ctx.quadraticCurveTo(
+        secondLast.x * width,
+        secondLast.y * height,
+        last.x * width,
+        last.y * height,
+      );
       ctx.stroke();
     },
     [],
@@ -204,14 +221,28 @@ export default function OnlineDrawing({
       currentPointsRef.current.push(pt);
       const points = currentPointsRef.current;
       const len = points.length;
-      if (len >= 2) {
-        ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = strokeSize;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = strokeSize;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (len >= 3) {
         ctx.beginPath();
-        ctx.moveTo(points[len - 2].x * canvas.width, points[len - 2].y * canvas.height);
-        ctx.lineTo(pt.x * canvas.width, pt.y * canvas.height);
+        const p0 = points[len - 3];
+        const p1 = points[len - 2];
+        const p2 = points[len - 1];
+        const mid1x = ((p0.x + p1.x) / 2) * canvas.width;
+        const mid1y = ((p0.y + p1.y) / 2) * canvas.height;
+        const mid2x = ((p1.x + p2.x) / 2) * canvas.width;
+        const mid2y = ((p1.y + p2.y) / 2) * canvas.height;
+        ctx.moveTo(mid1x, mid1y);
+        ctx.quadraticCurveTo(p1.x * canvas.width, p1.y * canvas.height, mid2x, mid2y);
+        ctx.stroke();
+      } else if (len === 2) {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x * canvas.width, points[0].y * canvas.height);
+        ctx.lineTo(points[1].x * canvas.width, points[1].y * canvas.height);
         ctx.stroke();
       }
     } else if (startPointRef.current) {

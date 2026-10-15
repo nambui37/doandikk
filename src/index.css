@@ -807,7 +807,7 @@ h1,h2,h3,p { margin-top:0; }
 ============================================================ */
 .gartic-draw-wrapper {
   width: 100%;
-  max-width: 980px;
+  max-width: 1080px;
   margin: 10px auto 16px;
   display: flex;
   flex-direction: column;
@@ -872,10 +872,10 @@ h1,h2,h3,p { margin-top:0; }
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
-/* KHUNG GIẤY VẼ Ở GIỮA */
+/* KHUNG GIẤY VẼ Ở GIỮA TO RỘNG RÃI */
 .gartic-canvas-stage {
   flex: 1;
-  min-height: 380px;
+  min-height: 520px;
   background: #ffffff;
   border: 3px solid #1a1a2e;
   border-radius: 16px;
@@ -1714,8 +1714,8 @@ h1,h2,h3,p { margin-top:0; }
   }
 
   .gartic-canvas-stage {
-    min-height: 290px;
-    height: 52vw;
+    min-height: 380px;
+    height: 68vw;
   }
 
   .gartic-bottom-bar {
