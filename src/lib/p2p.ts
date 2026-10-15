@@ -109,6 +109,10 @@ export class P2PManager {
     }
   }
 
+  public broadcast(msg: P2PMessage) {
+    this.send(msg);
+  }
+
   public destroy() {
     this.isConnected = false;
     try {

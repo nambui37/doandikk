@@ -121,7 +121,7 @@ export default async function handler(req: any, res: any) {
     res.status(404).json({ error: 'Không tìm thấy endpoint yêu cầu.' });
   } catch (error: any) {
     if (error instanceof RoomStoreError) {
-      res.status(error.status).json({ error: error.message });
+      res.status(error.statusCode || 500).json({ error: error.message });
       return;
     }
     console.error('Room API Error:', error);

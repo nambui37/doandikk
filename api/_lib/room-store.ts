@@ -11,8 +11,10 @@ import type {
 } from '../../src/game/types';
 
 export class RoomStoreError extends Error {
+  public status: number;
   constructor(public statusCode: number, message: string) {
     super(message);
+    this.status = statusCode;
     this.name = 'RoomStoreError';
   }
 }
@@ -93,8 +95,8 @@ function checkCorrectGuess(guess: string, target: string): boolean {
   return false;
 }
 
-function shuffled<T>(items: T[] | undefined): T[] {
-  const safeItems = Array.isArray(items) && items.length > 0 ? items : Object.values(wordBank)[0] || [];
+function shuffled(items: string[] | undefined): string[] {
+  const safeItems = Array.isArray(items) && items.length > 0 ? items : (Object.values(wordBank)[0] || []);
   const result = [...safeItems];
   for (let index = result.length - 1; index > 0; index -= 1) {
     const target = randomBytes(4).readUInt32BE(0) % (index + 1);
