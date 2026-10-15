@@ -1,6 +1,18 @@
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'paused' | 'results';
 export type RoomTurnPhase = 'drawing' | 'guessing' | 'reveal';
-export type RoomAction = 'start' | 'guess' | 'finish_drawing' | 'pause' | 'resume' | 'restart';
+export type GameMode = 'classic' | 'telephone';
+
+export type RoomAction =
+  | 'start'
+  | 'guess'
+  | 'finish_drawing'
+  | 'pause'
+  | 'resume'
+  | 'restart'
+  | 'telephone_submit'
+  | 'set_game_mode'
+  | 'set_telephone_config'
+  | 'telephone_change_album';
 
 export type DrawingPoint = { x: number; y: number };
 export type DrawingStroke = {
@@ -24,9 +36,51 @@ export type GuessFeedback = {
   timestamp: number;
 };
 
+export type TelephoneStepType = 'prompt' | 'drawing' | 'guess';
+
+export interface TelephoneStep {
+  stepIndex: number;
+  type: TelephoneStepType;
+  authorName: string;
+  text?: string;
+  strokes?: DrawingStroke[];
+  timestamp: number;
+}
+
+export interface TelephoneBook {
+  bookIndex: number;
+  initialAuthorName: string;
+  steps: TelephoneStep[];
+}
+
+export interface TelephoneConfig {
+  promptSeconds: number;
+  drawSeconds: number;
+  guessSeconds: number;
+}
+
+export interface TelephoneState {
+  round: number;
+  totalRounds: number;
+  phase: 'prompt' | 'drawing' | 'guess' | 'album';
+  timeLeftSeconds: number;
+  myBookIndex: number;
+  hasSubmitted: boolean;
+  submittedCount: number;
+  totalPlayers: number;
+  inputPrompt?: string;
+  inputDrawingStrokes?: DrawingStroke[];
+  allBooks?: TelephoneBook[];
+  albumBookIndex?: number;
+  albumStepIndex?: number;
+}
+
 export type RoomView = {
   roomCode: string;
   status: RoomStatus;
+  gameMode: GameMode;
+  telephoneConfig?: TelephoneConfig;
+  telephoneState?: TelephoneState;
   currentPhase: RoomTurnPhase;
   phaseTimeLeftSeconds: number;
   players: RoomPlayer[];
@@ -54,8 +108,10 @@ export type RoomCreateInput = {
   playerName: string;
   category: string;
   targetScore?: number;
+  gameMode?: GameMode;
 };
 
 export type RoomJoinInput = {
   playerName: string;
 };
+

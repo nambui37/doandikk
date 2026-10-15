@@ -24,14 +24,26 @@ import type {
 } from './types';
 import OnlineDrawing from './OnlineDrawing';
 import ResultsScreen from './ResultsScreen';
+import TelephonePlay from './TelephonePlay';
+import TelephoneAlbum from './TelephoneAlbum';
+import { AVATAR_LIST } from './Avatars';
 import {
   apiActOnRoom,
   apiFinishDrawingEarly,
   apiGetRoomState,
   apiGuessWord,
+  apiSetGameMode,
+  apiSetTelephoneConfig,
+  apiTelephoneSubmit,
   apiUpdateRoomDrawing,
 } from '../lib/api';
 import { P2PManager, type P2PMessage } from '../lib/p2p';
+
+function getAvatarForPlayer(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash + name.charCodeAt(i)) % AVATAR_LIST.length;
+  return AVATAR_LIST[hash] || AVATAR_LIST[0];
+}
 
 type Props = {
   session: RoomSession;
@@ -274,8 +286,29 @@ export default function OnlineRoom({ session, onExit }: Props) {
   const currentDrawer = view.players[drawerIndex];
   const localIsDrawer = drawerIndex === myIndex;
 
-  // MÀN HÌNH KẾT QUẢ KHI CÓ NGƯỜI ĐẠT ĐỦ ĐIỂM
+  // Nộp bài cho chế độ Tam Sao Thất Bản
+  const handleTelephoneSubmit = async (payload: { text?: string; strokes?: DrawingStroke[] }) => {
+    try {
+      const nextView = await apiTelephoneSubmit(roomCode, playerToken, payload);
+      setView(nextView);
+    } catch (err: any) {
+      console.error('Lỗi nộp bài Telephone:', err);
+    }
+  };
+
+  // MÀN HÌNH KẾT QUẢ KHI CÓ NGƯỜI ĐẠT ĐỦ ĐIỂM HOẶC CÔNG CHIẾU ALBUM
   if (view.status === 'results') {
+    if (view.gameMode === 'telephone' && view.telephoneState?.allBooks) {
+      return (
+        <TelephoneAlbum
+          books={view.telephoneState.allBooks}
+          isHost={isHost}
+          onRestart={() => handleAction('restart')}
+          onExit={onExit}
+        />
+      );
+    }
+
     const winnerPlayer = view.winnerIndex !== null && view.winnerIndex !== undefined
       ? view.players[view.winnerIndex]
       : null;
@@ -338,30 +371,33 @@ export default function OnlineRoom({ session, onExit }: Props) {
               <Users size={16} /> Người chơi trong phòng ({view.players.length}/8):
             </div>
             <div className="gartic-players-pod-grid">
-              {view.players.map((player) => (
-                <div
-                  key={player.index}
-                  className={`gartic-player-pod ${player.index === myIndex ? 'is-me' : ''}`}
-                >
-                  <div className="gartic-avatar-circle">
-                    {player.name.charAt(0).toUpperCase()}
+              {view.players.map((player) => {
+                const av = getAvatarForPlayer(player.name);
+                return (
+                  <div
+                    key={player.index}
+                    className={`gartic-player-pod ${player.index === myIndex ? 'is-me' : ''}`}
+                  >
+                    <div className="gartic-avatar-circle" style={{ backgroundColor: av.bg }}>
+                      {av.render(36)}
+                    </div>
+                    <div className="gartic-pod-info">
+                      <span className="gartic-pod-name">
+                        {player.name} {player.index === myIndex && '(Bạn)'}
+                      </span>
+                      <span className="gartic-pod-role">
+                        {player.isHost ? (
+                          <>
+                            <Crown size={12} className="crown-icon" /> Chủ phòng
+                          </>
+                        ) : (
+                          'Đã sẵn sàng'
+                        )}
+                      </span>
+                    </div>
                   </div>
-                  <div className="gartic-pod-info">
-                    <span className="gartic-pod-name">
-                      {player.name} {player.index === myIndex && '(Bạn)'}
-                    </span>
-                    <span className="gartic-pod-role">
-                      {player.isHost ? (
-                        <>
-                          <Crown size={12} className="crown-icon" /> Chủ phòng
-                        </>
-                      ) : (
-                        'Đã sẵn sàng'
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {view.players.length < 8 && (
                 <div className="gartic-player-pod waiting">
                   <div className="gartic-avatar-circle dashed">?</div>
@@ -373,14 +409,85 @@ export default function OnlineRoom({ session, onExit }: Props) {
             </div>
           </div>
 
-          {/* THÔNG TIN LUẬT CHƠI & MỤC TIÊU ĐIỂM */}
-          <div className="gartic-rules-card">
-            <Trophy size={18} className="trophy-icon" />
-            <div>
-              <strong>Mục tiêu: {view.targetScore} Điểm để Thắng cuộc!</strong>
-              <small>60s vẽ tranh · 20s đoán tự động · Thay phiên nhau vẽ</small>
+          {/* LỰA CHỌN CHẾ ĐỘ CHƠI */}
+          <div className="gartic-mode-selector-section">
+            <div className="gartic-section-label">
+              <Sparkles size={16} /> Chọn chế độ chơi:
+            </div>
+            <div className="gartic-mode-tabs">
+              <button
+                type="button"
+                className={`gartic-mode-tab ${view.gameMode === 'telephone' ? 'active' : ''}`}
+                onClick={() => isHost && apiSetGameMode(roomCode, playerToken, 'telephone').then(setView).catch(() => {})}
+                disabled={!isHost}
+              >
+                <div className="mode-tab-title">
+                  <span>🌀 Tam Sao Thất Bản</span>
+                  <span className="mode-badge-hot">KHUYÊN DÙNG</span>
+                </div>
+                <div className="mode-tab-desc">
+                  Mỗi người 1 cuốn sổ song song: Viết câu ➔ Vẽ tranh ➔ Đoán câu ➔ Công chiếu Album!
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`gartic-mode-tab ${view.gameMode === 'classic' ? 'active' : ''}`}
+                onClick={() => isHost && apiSetGameMode(roomCode, playerToken, 'classic').then(setView).catch(() => {})}
+                disabled={!isHost}
+              >
+                <div className="mode-tab-title">
+                  <span>⚔️ Đoán Hình 1v1</span>
+                </div>
+                <div className="mode-tab-desc">
+                  Thay phiên nhau vẽ và đoán từ bí mật, ai đủ điểm mục tiêu trước sẽ thắng!
+                </div>
+              </button>
             </div>
           </div>
+
+          {/* THÔNG TIN THỜI GIAN HOẶC MỤC TIÊU ĐIỂM */}
+          {view.gameMode === 'telephone' ? (
+            <div className="gartic-rules-card telephone">
+              <div className="gartic-section-label" style={{ marginBottom: 8, color: '#e0e7ff' }}>
+                <Clock3 size={16} /> Tùy chỉnh thời gian mỗi lượt:
+              </div>
+              <div className="telephone-time-presets">
+                <button
+                  type="button"
+                  className={`preset-pill ${view.telephoneConfig?.drawSeconds === 60 ? 'active' : ''}`}
+                  onClick={() => isHost && apiSetTelephoneConfig(roomCode, playerToken, { promptSeconds: 45, drawSeconds: 60, guessSeconds: 45 }).then(setView).catch(() => {})}
+                  disabled={!isHost}
+                >
+                  ⚡ Nhanh (45s viết / 60s vẽ / 45s đoán)
+                </button>
+                <button
+                  type="button"
+                  className={`preset-pill ${(!view.telephoneConfig || view.telephoneConfig?.drawSeconds === 75) ? 'active' : ''}`}
+                  onClick={() => isHost && apiSetTelephoneConfig(roomCode, playerToken, { promptSeconds: 60, drawSeconds: 75, guessSeconds: 60 }).then(setView).catch(() => {})}
+                  disabled={!isHost}
+                >
+                  🌟 Chuẩn (60s viết / 75s vẽ / 60s đoán)
+                </button>
+                <button
+                  type="button"
+                  className={`preset-pill ${view.telephoneConfig?.drawSeconds === 90 ? 'active' : ''}`}
+                  onClick={() => isHost && apiSetTelephoneConfig(roomCode, playerToken, { promptSeconds: 75, drawSeconds: 90, guessSeconds: 75 }).then(setView).catch(() => {})}
+                  disabled={!isHost}
+                >
+                  ☕ Thoải mái (75s viết / 90s vẽ / 75s đoán)
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="gartic-rules-card">
+              <Trophy size={18} className="trophy-icon" />
+              <div>
+                <strong>Mục tiêu: {view.targetScore} Điểm để Thắng cuộc!</strong>
+                <small>60s vẽ tranh · 20s đoán tự động · Thay phiên nhau vẽ</small>
+              </div>
+            </div>
+          )}
 
           {actionError && <div className="online-error" role="alert">{actionError}</div>}
 
@@ -428,7 +535,28 @@ export default function OnlineRoom({ session, onExit }: Props) {
     );
   }
 
-  // MÀN HÌNH ĐANG CHƠI (PLAYING / PAUSED)
+  // MÀN HÌNH CHẾ ĐỘ TAM SAO THẤT BẢN
+  if (view.gameMode === 'telephone' && view.telephoneState) {
+    if (view.telephoneState.phase === 'album' && view.telephoneState.allBooks) {
+      return (
+        <TelephoneAlbum
+          books={view.telephoneState.allBooks}
+          isHost={isHost}
+          onRestart={() => handleAction('restart')}
+          onExit={onExit}
+        />
+      );
+    }
+    return (
+      <TelephonePlay
+        state={view.telephoneState}
+        roomCode={roomCode}
+        onSubmit={handleTelephoneSubmit}
+      />
+    );
+  }
+
+  // MÀN HÌNH ĐANG CHƠI 1v1 CỔ ĐIỂN (PLAYING / PAUSED)
   const isDrawingPhase = view.currentPhase === 'drawing';
   const isGuessingPhase = view.currentPhase === 'guessing';
   const isRevealPhase = view.currentPhase === 'reveal';

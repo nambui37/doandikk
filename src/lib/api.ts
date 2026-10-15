@@ -70,7 +70,7 @@ export async function apiActOnRoom(
   roomCode: string,
   token: string,
   action: RoomAction,
-  payload?: { guessText?: string; targetScore?: number },
+  payload?: any,
 ): Promise<RoomView> {
   const res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(roomCode)}/actions`, {
     method: 'POST',
@@ -85,6 +85,38 @@ export async function apiActOnRoom(
     throw new Error(err.error || 'Hành động không hợp lệ.');
   }
   return res.json();
+}
+
+export async function apiSetGameMode(
+  roomCode: string,
+  token: string,
+  gameMode: 'classic' | 'telephone',
+): Promise<RoomView> {
+  return apiActOnRoom(roomCode, token, 'set_game_mode', { gameMode });
+}
+
+export async function apiSetTelephoneConfig(
+  roomCode: string,
+  token: string,
+  telephoneConfig: { promptSeconds?: number; drawSeconds?: number; guessSeconds?: number },
+): Promise<RoomView> {
+  return apiActOnRoom(roomCode, token, 'set_telephone_config', { telephoneConfig });
+}
+
+export async function apiTelephoneSubmit(
+  roomCode: string,
+  token: string,
+  payload: { text?: string; strokes?: DrawingStroke[] },
+): Promise<RoomView> {
+  return apiActOnRoom(roomCode, token, 'telephone_submit', payload);
+}
+
+export async function apiTelephoneChangeAlbum(
+  roomCode: string,
+  token: string,
+  payload: { albumBookIndex?: number; albumStepIndex?: number },
+): Promise<RoomView> {
+  return apiActOnRoom(roomCode, token, 'telephone_change_album', payload);
 }
 
 export async function apiGuessWord(
@@ -121,3 +153,4 @@ export async function apiUpdateRoomDrawing(
   }
   return res.json();
 }
+

@@ -8,6 +8,12 @@ import type {
   DrawingStroke,
   RoomTurnPhase,
   GuessFeedback,
+  GameMode,
+  TelephoneConfig,
+  TelephoneState,
+  TelephoneBook,
+  TelephoneStep,
+  TelephoneStepType,
 } from '../../src/game/types';
 
 export class RoomStoreError extends Error {
@@ -30,6 +36,8 @@ interface GameRoom {
   players: StoredPlayer[];
   category: string;
   targetScore: number;
+  gameMode: GameMode;
+  telephoneConfig: TelephoneConfig;
   status: 'waiting' | 'ready' | 'playing' | 'paused' | 'results';
   currentPhase: RoomTurnPhase;
   phaseEndsAt: number | null;
@@ -44,7 +52,16 @@ interface GameRoom {
   drawingRevision: number;
   drawingStrokes: DrawingStroke[];
   lastActivityAt: number;
+
+  // Trạng thái cho chế độ Tam Sao Thất Bản (Telephone Chain)
+  telephoneRound: number;
+  telephoneTotalRounds: number;
+  telephoneSubmissions: Record<string, boolean>;
+  telephoneBooks: TelephoneBook[];
+  albumBookIndex: number;
+  albumStepIndex: number;
 }
+
 
 const DRAWING_DURATION_MS = 60 * 1000; // 60 giây vẽ
 const GUESSING_DURATION_MS = 20 * 1000; // 20 giây đoán
@@ -180,9 +197,8 @@ function playerIndexForToken(room: GameRoom, token: string | undefined): number 
   return index;
 }
 
-// Chuyển sang vòng tiếp theo
+// Chuyển sang vòng tiếp theo (Classic 1v1)
 function advanceToNextRound(room: GameRoom, now: number): void {
-  // Kiểm tra xem đã có người thắng chưa
   for (let i = 0; i < room.players.length; i++) {
     if (room.scores[i] >= room.targetScore) {
       room.status = 'results';
@@ -199,11 +215,56 @@ function advanceToNextRound(room: GameRoom, now: number): void {
   clearDrawing(room);
 }
 
+// Chuyển sang vòng tiếp theo trong Tam Sao Thất Bản (Telephone Chain)
+function advanceTelephoneRound(room: GameRoom, now: number): void {
+  const currentRound = room.telephoneRound;
+  const totalRounds = room.telephoneTotalRounds || room.players.length;
+  const stepType: TelephoneStepType = currentRound === 0 ? 'prompt' : (currentRound % 2 === 1 ? 'drawing' : 'guess');
+
+  // Điền giá trị mặc định cho những người chưa kịp nộp bài khi hết giờ
+  room.players.forEach((player, pIdx) => {
+    const bookIndex = (pIdx - currentRound + totalRounds) % totalRounds;
+    const book = room.telephoneBooks[bookIndex];
+    if (book && !book.steps[currentRound]) {
+      book.steps[currentRound] = {
+        stepIndex: currentRound,
+        type: stepType,
+        authorName: player.name,
+        text: stepType === 'prompt' ? 'Con mèo bay lượn trên mây' : 'Một điều kỳ thú',
+        strokes: [],
+        timestamp: now,
+      };
+    }
+  });
+
+  room.telephoneRound += 1;
+  room.telephoneSubmissions = {};
+
+  if (room.telephoneRound >= totalRounds) {
+    // Tất cả các cuốn sổ đã hoàn thành! Chuyển sang Màn hình Công chiếu Album
+    room.status = 'results';
+    room.phaseEndsAt = null;
+    room.albumBookIndex = 0;
+    room.albumStepIndex = 0;
+    return;
+  }
+
+  // Xác định thời lượng cho vòng tiếp theo
+  const nextType = room.telephoneRound % 2 === 1 ? 'drawing' : 'guess';
+  const durationSec = nextType === 'drawing' ? room.telephoneConfig.drawSeconds : room.telephoneConfig.guessSeconds;
+  room.phaseEndsAt = now + durationSec * 1000;
+}
+
 // Tự động kiểm tra thời gian trôi qua để chuyển phase
 function updateRoomClock(room: GameRoom, now: number): void {
   if (room.status !== 'playing' || room.phaseEndsAt === null) return;
 
   if (now >= room.phaseEndsAt) {
+    if (room.gameMode === 'telephone') {
+      advanceTelephoneRound(room, now);
+      return;
+    }
+
     if (room.currentPhase === 'drawing') {
       // Hết 60s vẽ -> chuyển sang 20s đoán
       room.currentPhase = 'guessing';
@@ -227,8 +288,6 @@ export function roomView(room: GameRoom, playerIndex: number, now: number): Room
   const drawerIndex = room.players.length > 0 ? room.turnIndex % room.players.length : 0;
   const isDrawer = drawerIndex === playerIndex;
 
-  // Người vẽ được thấy từ bí mật trong suốt ván chơi
-  // Người đoán chỉ thấy từ bí mật khi ở phase 'reveal' hoặc khi kết thúc game
   const currentWord = room.words[room.wordIndex % room.words.length] ?? '';
   const canSeeWord = isDrawer || room.currentPhase === 'reveal' || room.status === 'results';
 
@@ -237,9 +296,51 @@ export function roomView(room: GameRoom, playerIndex: number, now: number): Room
     timeLeft = Math.max(0, Math.ceil((room.phaseEndsAt - now) / 1000));
   }
 
+  // Xây dựng trạng thái Telephone riêng biệt cho người chơi này
+  let telephoneState: TelephoneState | undefined = undefined;
+  if (room.gameMode === 'telephone') {
+    const isAlbum = room.status === 'results' || (room.telephoneTotalRounds > 0 && room.telephoneRound >= room.telephoneTotalRounds);
+    const currentRound = room.telephoneRound;
+    const totalRounds = room.telephoneTotalRounds || room.players.length;
+    const currentStepType: TelephoneStepType = isAlbum
+      ? ('album' as any)
+      : currentRound === 0
+      ? 'prompt'
+      : currentRound % 2 === 1
+      ? 'drawing'
+      : 'guess';
+
+    const myBookIndex = totalRounds > 0 ? (playerIndex - currentRound + totalRounds) % totalRounds : 0;
+    const myCurrentBook = room.telephoneBooks[myBookIndex];
+    const previousStep = myCurrentBook && currentRound > 0 ? myCurrentBook.steps[currentRound - 1] : undefined;
+
+    const playerToken = room.players[playerIndex]?.token;
+    const hasSubmitted = !!(playerToken && room.telephoneSubmissions[playerToken]);
+    const submittedCount = Object.values(room.telephoneSubmissions).filter(Boolean).length;
+
+    telephoneState = {
+      round: currentRound,
+      totalRounds,
+      phase: isAlbum ? 'album' : currentStepType,
+      timeLeftSeconds: timeLeft,
+      myBookIndex,
+      hasSubmitted,
+      submittedCount,
+      totalPlayers: room.players.length,
+      inputPrompt: previousStep?.text,
+      inputDrawingStrokes: previousStep?.strokes,
+      allBooks: isAlbum ? room.telephoneBooks : undefined,
+      albumBookIndex: room.albumBookIndex,
+      albumStepIndex: room.albumStepIndex,
+    };
+  }
+
   return {
     roomCode: room.code,
     status: room.status,
+    gameMode: room.gameMode,
+    telephoneConfig: room.telephoneConfig,
+    telephoneState,
     currentPhase: room.currentPhase,
     phaseTimeLeftSeconds: timeLeft,
     players: room.players.map((player, index) => ({
@@ -289,6 +390,12 @@ export function createRoom(input: RoomCreateInput): RoomSession {
     players: [{ name: input.playerName, token, lastSeenAt: now }],
     category: selectedCategory,
     targetScore,
+    gameMode: input.gameMode || 'telephone',
+    telephoneConfig: {
+      promptSeconds: 60,
+      drawSeconds: 75,
+      guessSeconds: 60,
+    },
     status: 'waiting',
     currentPhase: 'drawing',
     phaseEndsAt: null,
@@ -303,6 +410,12 @@ export function createRoom(input: RoomCreateInput): RoomSession {
     drawingRevision: 0,
     drawingStrokes: [],
     lastActivityAt: now,
+    telephoneRound: 0,
+    telephoneTotalRounds: 0,
+    telephoneSubmissions: {},
+    telephoneBooks: [],
+    albumBookIndex: 0,
+    albumStepIndex: 0,
   };
   rooms.set(code, room);
 
@@ -368,7 +481,7 @@ export function performRoomAction(
   code: string,
   token: string | undefined,
   action: RoomAction,
-  payload?: { guessText?: string; targetScore?: number },
+  payload?: any,
 ): RoomView {
   const room = findRoom(code);
   const now = Date.now();
@@ -380,25 +493,106 @@ export function performRoomAction(
   const isDrawer = drawerIndex === playerIndex;
 
   switch (action) {
+    case 'set_game_mode': {
+      if (playerIndex !== 0) throw new RoomStoreError(403, 'Chỉ chủ phòng mới có thể thay đổi chế độ chơi.');
+      if (payload?.gameMode === 'classic' || payload?.gameMode === 'telephone') {
+        room.gameMode = payload.gameMode;
+      }
+      break;
+    }
+
+    case 'set_telephone_config': {
+      if (playerIndex !== 0) throw new RoomStoreError(403, 'Chỉ chủ phòng mới có thể chỉnh sửa thời gian.');
+      if (payload?.telephoneConfig) {
+        room.telephoneConfig = {
+          ...room.telephoneConfig,
+          ...payload.telephoneConfig,
+        };
+      }
+      break;
+    }
+
     case 'start': {
       if (playerIndex !== 0) throw new RoomStoreError(403, 'Chỉ chủ phòng mới có thể bắt đầu ván đấu.');
       if (room.players.length < 2) throw new RoomStoreError(400, 'Cần ít nhất 2 người để bắt đầu.');
 
       room.status = 'playing';
-      room.currentPhase = 'drawing';
-      room.turnIndex = 0;
-      room.wordIndex = 0;
-      room.scores = room.players.map(() => 0);
-      room.winnerIndex = null;
-      room.lastRevealedWord = null;
-      room.lastGuessFeedback = null;
-      room.phaseEndsAt = now + DRAWING_DURATION_MS;
-      clearDrawing(room);
+
+      if (room.gameMode === 'telephone') {
+        room.telephoneRound = 0;
+        room.telephoneTotalRounds = room.players.length;
+        room.telephoneSubmissions = {};
+        room.telephoneBooks = room.players.map((p, idx) => ({
+          bookIndex: idx,
+          initialAuthorName: p.name,
+          steps: [],
+        }));
+        room.albumBookIndex = 0;
+        room.albumStepIndex = 0;
+        room.phaseEndsAt = now + room.telephoneConfig.promptSeconds * 1000;
+        clearDrawing(room);
+      } else {
+        room.currentPhase = 'drawing';
+        room.turnIndex = 0;
+        room.wordIndex = 0;
+        room.scores = room.players.map(() => 0);
+        room.winnerIndex = null;
+        room.lastRevealedWord = null;
+        room.lastGuessFeedback = null;
+        room.phaseEndsAt = now + DRAWING_DURATION_MS;
+        clearDrawing(room);
+      }
+      break;
+    }
+
+    case 'telephone_submit': {
+      if (room.gameMode !== 'telephone') throw new RoomStoreError(400, 'Phòng không ở chế độ Tam Sao Thất Bản.');
+      if (room.status !== 'playing') throw new RoomStoreError(400, 'Ván chơi chưa bắt đầu.');
+
+      const player = room.players[playerIndex];
+      const pToken = player.token;
+      if (room.telephoneSubmissions[pToken]) {
+        break; // Đã nộp rồi
+      }
+
+      const cRound = room.telephoneRound;
+      const tRounds = room.telephoneTotalRounds || room.players.length;
+      const myBookIdx = (playerIndex - cRound + tRounds) % tRounds;
+      const targetBook = room.telephoneBooks[myBookIdx];
+
+      const currentType: TelephoneStepType = cRound === 0 ? 'prompt' : (cRound % 2 === 1 ? 'drawing' : 'guess');
+      if (targetBook) {
+        targetBook.steps[cRound] = {
+          stepIndex: cRound,
+          type: currentType,
+          authorName: player.name,
+          text: (payload?.text || '').trim() || (currentType === 'prompt' ? 'Con mèo bay lượn' : 'Bức vẽ bí ẩn'),
+          strokes: Array.isArray(payload?.strokes) ? payload.strokes : [],
+          timestamp: now,
+        };
+      }
+
+      room.telephoneSubmissions[pToken] = true;
+
+      // Nếu tất cả người chơi đã nộp bài, chuyển ngay sang vòng tiếp theo mà không cần chờ hết giờ!
+      const allSubmitted = room.players.every((p) => room.telephoneSubmissions[p.token]);
+      if (allSubmitted) {
+        advanceTelephoneRound(room, now);
+      }
+      break;
+    }
+
+    case 'telephone_change_album': {
+      if (typeof payload?.albumBookIndex === 'number') {
+        room.albumBookIndex = payload.albumBookIndex;
+      }
+      if (typeof payload?.albumStepIndex === 'number') {
+        room.albumStepIndex = payload.albumStepIndex;
+      }
       break;
     }
 
     case 'finish_drawing': {
-      // Người vẽ bấm hoàn thành vẽ sớm -> chuyển ngay sang phase đoán
       if (!isDrawer) throw new RoomStoreError(403, 'Chỉ người vẽ mới có thể bấm hoàn thành vẽ sớm.');
       if (room.status !== 'playing' || room.currentPhase !== 'drawing') {
         throw new RoomStoreError(400, 'Hiện không ở lượt vẽ.');
@@ -409,7 +603,6 @@ export function performRoomAction(
     }
 
     case 'guess': {
-      // Người đoán nhập câu trả lời
       if (room.status !== 'playing') throw new RoomStoreError(400, 'Trận đấu chưa bắt đầu.');
       if (isDrawer) throw new RoomStoreError(400, 'Người vẽ không được tự đoán từ của mình!');
       if (room.currentPhase !== 'guessing' && room.currentPhase !== 'drawing') {
@@ -431,14 +624,11 @@ export function performRoomAction(
       };
 
       if (isCorrect) {
-        // Chỉ cộng 1 điểm duy nhất cho người đoán đúng
         room.scores[playerIndex] = (room.scores[playerIndex] || 0) + 1;
-
         room.lastRevealedWord = currentWord;
         room.currentPhase = 'reveal';
         room.phaseEndsAt = now + REVEAL_DURATION_MS;
 
-        // Người đoán đạt đủ điểm mục tiêu trước sẽ chiến thắng
         if (room.scores[playerIndex] >= room.targetScore) {
           room.status = 'results';
           room.winnerIndex = playerIndex;
@@ -459,6 +649,12 @@ export function performRoomAction(
       room.winnerIndex = null;
       room.lastRevealedWord = null;
       room.lastGuessFeedback = null;
+      room.telephoneRound = 0;
+      room.telephoneTotalRounds = 0;
+      room.telephoneSubmissions = {};
+      room.telephoneBooks = [];
+      room.albumBookIndex = 0;
+      room.albumStepIndex = 0;
       clearDrawing(room);
       break;
     }
@@ -469,6 +665,7 @@ export function performRoomAction(
 
   return roomView(room, playerIndex, now);
 }
+
 
 export function updateRoomDrawing(
   code: string,
