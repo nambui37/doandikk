@@ -6,6 +6,7 @@ import {
   Copy,
   Crown,
   LoaderCircle,
+  LogOut,
   RotateCcw,
   Send,
   Share2,
@@ -13,7 +14,6 @@ import {
   Trophy,
   Users,
   Wifi,
-  X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type {
@@ -45,6 +45,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [p2pActive, setP2pActive] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Ô nhập đoán từ khóa
   const [guessInput, setGuessInput] = useState('');
@@ -58,7 +59,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
   const p2pManagerRef = useRef<P2PManager | null>(null);
   const lastFeedbackTimestamp = useRef<number>(0);
 
-  // Khởi tạo WebRTC P2P
+  // Khởi tạo WebRTC P2P (CHỈ truyền nét vẽ DRAW_STROKE và CLEAR_DRAWING, tuyệt đối không đồng bộ view)
   useEffect(() => {
     const p2p = new P2PManager(roomCode, isHost);
     p2pManagerRef.current = p2p;
@@ -79,10 +80,6 @@ export default function OnlineRoom({ session, onExit }: Props) {
             drawingRevision: msg.revision,
             drawingStrokes: [],
           }));
-        } else if (msg.type === 'STATE_SYNC') {
-          setView(msg.view);
-        } else if (msg.type === 'REQUEST_ACTION' && isHost) {
-          handleAction(msg.action);
         }
       },
       () => setP2pActive(true),
@@ -95,7 +92,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
     };
   }, [roomCode, isHost]);
 
-  // Polling đồng bộ từ Server (1.2s)
+  // Polling đồng bộ độc lập từ Server cho từng client với token riêng
   useEffect(() => {
     let timerId: any = null;
     let isCancelled = false;
@@ -126,16 +123,9 @@ export default function OnlineRoom({ session, onExit }: Props) {
               });
             }
           }
-
-          if (isHost && p2pManagerRef.current?.isConnected) {
-            p2pManagerRef.current.broadcast({
-              type: 'STATE_SYNC',
-              view: nextView,
-            });
-          }
         }
       } catch {
-        // Lỗi mạng tạm thời, tiếp tục poll
+        // Tiếp tục poll khi mạng lag
       } finally {
         if (!isCancelled) {
           timerId = setTimeout(poll, 1200);
@@ -149,7 +139,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
       isCancelled = true;
       if (timerId) clearTimeout(timerId);
     };
-  }, [roomCode, playerToken, isHost]);
+  }, [roomCode, playerToken]);
 
   // Hành động phòng
   const handleAction = async (action: RoomAction) => {
@@ -168,13 +158,6 @@ export default function OnlineRoom({ session, onExit }: Props) {
           origin: { y: 0.6 },
         });
       }
-
-      if (isHost && p2pManagerRef.current?.isConnected) {
-        p2pManagerRef.current.broadcast({
-          type: 'STATE_SYNC',
-          view: nextView,
-        });
-      }
     } catch (err: any) {
       setActionError(err?.message || 'Có lỗi xảy ra.');
     } finally {
@@ -182,7 +165,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
     }
   };
 
-  // Người vẽ kết thúc vẽ sớm -> chuyển sang cho đoán ngay
+  // Người vẽ kết thúc vẽ sớm (Bấm DONE!)
   const handleFinishDrawingEarly = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -268,10 +251,13 @@ export default function OnlineRoom({ session, onExit }: Props) {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const localPlayer = view.players[session.playerIndex];
+  // Xác định chuẩn xác người chơi hiện tại và vai trò vẽ
+  const myName = session.view.players[session.playerIndex]?.name;
+  const myPlayer = view.players.find((p) => p.name === myName) || view.players[session.playerIndex];
+  const myIndex = myPlayer ? myPlayer.index : session.playerIndex;
   const drawerIndex = view.drawerIndex;
   const currentDrawer = view.players[drawerIndex];
-  const localIsDrawer = drawerIndex === session.playerIndex;
+  const localIsDrawer = drawerIndex === myIndex;
 
   // MÀN HÌNH KẾT QUẢ KHI CÓ NGƯỜI ĐẠT ĐỦ ĐIỂM
   if (view.status === 'results') {
@@ -295,99 +281,133 @@ export default function OnlineRoom({ session, onExit }: Props) {
   // MÀN HÌNH PHÒNG CHỜ (WAITING / READY)
   if (view.status === 'waiting' || view.status === 'ready') {
     return (
-      <main className="screen online-lobby">
-        <section className="lobby-card fade-in">
-          <div className="eyebrow" style={{ justifyContent: 'center' }}>
-            <Wifi size={14} /> Phòng chơi trực tuyến ({view.players.length}/8 người)
+      <main className="screen gartic-lobby-screen">
+        <section className="gartic-lobby-card fade-in">
+          {/* HEADER PHÒNG CHỜ */}
+          <div className="gartic-lobby-header">
+            <div className="gartic-tag">
+              <Wifi size={14} /> Phòng chơi trực tuyến
+            </div>
+            <button
+              type="button"
+              className="gartic-leave-btn-header"
+              onClick={() => setShowExitConfirm(true)}
+              title="Rời phòng"
+            >
+              <LogOut size={16} /> Rời phòng
+            </button>
           </div>
 
-          <h2>
-            Mã phòng: <span className="room-code-tag">{roomCode}</span>
+          <h2 className="gartic-lobby-title">
+            MÃ PHÒNG: <span className="gartic-code-glow">{roomCode}</span>
           </h2>
 
-          <p style={{ marginTop: 4, color: '#aeb4c5', fontSize: 13, textAlign: 'center' }}>
-            Chia sẻ mã phòng hoặc sao chép link gửi cho bạn bè để cùng vào vẽ & đoán:
+          <p className="gartic-lobby-desc">
+            Mời bạn bè cùng vào tranh tài vẽ tranh và đoán từ siêu vui!
           </p>
 
-          <div className="copy-row" style={{ marginTop: 12 }}>
-            <button type="button" className="copy-btn primary-copy" onClick={copyInviteLink}>
-              {copiedLink ? <Check size={16} /> : <Share2 size={16} />}
-              {copiedLink ? 'Đã sao chép link mời!' : 'Sao chép link mời bạn bè'}
+          {/* HÀNG NÚT COPY MÃ & LINK */}
+          <div className="gartic-invite-actions">
+            <button type="button" className="gartic-big-copy-btn" onClick={copyInviteLink}>
+              {copiedLink ? <Check size={18} /> : <Share2 size={18} />}
+              <span>{copiedLink ? 'Đã sao chép link mời!' : 'Sao chép Link mời bạn bè'}</span>
             </button>
-            <button type="button" className="copy-btn icon-only-btn" onClick={copyCode} title="Sao chép mã phòng">
-              {copied ? <Check size={16} /> : <Copy size={16} />}
+            <button type="button" className="gartic-icon-copy-btn" onClick={copyCode} title="Sao chép mã phòng">
+              {copied ? <Check size={18} /> : <Copy size={18} />}
             </button>
           </div>
 
-          <div className="players-list-box" style={{ marginTop: 16 }}>
-            <div className="box-title">
-              <Users size={15} /> Danh sách người chơi ({view.players.length}/8):
+          {/* DANH SÁCH THẺ NGƯỜI CHƠI PHONG CÁCH GARTIC PHONE */}
+          <div className="gartic-players-section">
+            <div className="gartic-section-label">
+              <Users size={16} /> Người chơi trong phòng ({view.players.length}/8):
             </div>
-            <div className="players-grid">
+            <div className="gartic-players-pod-grid">
               {view.players.map((player) => (
                 <div
                   key={player.index}
-                  className={`player-card-chip ${player.index === session.playerIndex ? 'me-chip' : ''}`}
+                  className={`gartic-player-pod ${player.index === myIndex ? 'is-me' : ''}`}
                 >
-                  <div className="player-avatar-mini">
+                  <div className="gartic-avatar-circle">
                     {player.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="player-meta">
-                    <span className="player-name">
-                      {player.name} {player.index === session.playerIndex && '(Bạn)'}
+                  <div className="gartic-pod-info">
+                    <span className="gartic-pod-name">
+                      {player.name} {player.index === myIndex && '(Bạn)'}
                     </span>
-                    <span className="player-role-badge">
+                    <span className="gartic-pod-role">
                       {player.isHost ? (
                         <>
-                          <Crown size={11} /> Chủ phòng
+                          <Crown size={12} className="crown-icon" /> Chủ phòng
                         </>
                       ) : (
-                        'Người chơi'
+                        'Đã sẵn sàng'
                       )}
                     </span>
                   </div>
                 </div>
               ))}
               {view.players.length < 8 && (
-                <div className="player-card-chip waiting-chip">
-                  <small>Đang đợi thêm bạn bè tham gia…</small>
+                <div className="gartic-player-pod waiting">
+                  <div className="gartic-avatar-circle dashed">?</div>
+                  <div className="gartic-pod-info">
+                    <span className="gartic-pod-name" style={{ color: '#888' }}>Chờ bạn bè...</span>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="room-message" style={{ marginTop: 14 }}>
-            <Trophy size={15} style={{ color: '#f7d55c' }} />
-            Mục tiêu: <strong>{view.targetScore} Điểm</strong> là chiến thắng · Chủ đề: <strong>{view.category}</strong>
+          {/* THÔNG TIN LUẬT CHƠI & MỤC TIÊU ĐIỂM */}
+          <div className="gartic-rules-card">
+            <Trophy size={18} className="trophy-icon" />
+            <div>
+              <strong>Mục tiêu: {view.targetScore} Điểm để Thắng cuộc!</strong>
+              <small>60s vẽ tranh · 20s đoán tự động · Thay phiên nhau vẽ</small>
+            </div>
           </div>
 
           {actionError && <div className="online-error" role="alert">{actionError}</div>}
 
+          {/* NÚT BẮT ĐẦU HOẶC CHỜ */}
           {isHost ? (
             <button
               type="button"
-              className="primary-btn full-btn"
+              className="gartic-primary-play-btn"
               disabled={view.players.length < 2 || isSubmitting}
               onClick={() => handleAction('start')}
-              style={{ marginTop: 14 }}
             >
               {isSubmitting ? (
-                <><LoaderCircle className="spin" /> Đang vào ván…</>
+                <><LoaderCircle className="spin" /> Đang chuẩn bị ván…</>
               ) : view.players.length < 2 ? (
-                <>Đang đợi ít nhất 2 người để bắt đầu…</>
+                <>Đang đợi bạn bè tham gia (Tối thiểu 2 người)…</>
               ) : (
-                <>Bắt đầu trận đấu ({view.players.length} người) <ArrowRight /></>
+                <>BẮT ĐẦU TRẬN ĐẤU ({view.players.length} người) <ArrowRight /></>
               )}
             </button>
           ) : (
-            <div className="room-message" style={{ justifyContent: 'center', marginTop: 14 }}>
-              <LoaderCircle className="spin" /> Đã sẵn sàng. Đang chờ chủ phòng bấm bắt đầu ván…
+            <div className="gartic-waiting-host-box">
+              <LoaderCircle className="spin" /> Đã sẵn sàng! Đang đợi chủ phòng bấm Bắt đầu…
             </div>
           )}
 
-          <button type="button" className="online-back" onClick={onExit} style={{ marginTop: 10 }}>
-            Thoát phòng về màn hình đầu
-          </button>
+          {/* POPUP XÁC NHẬN RỜI PHÒNG */}
+          {showExitConfirm && (
+            <div className="gartic-modal-overlay">
+              <div className="gartic-modal-content">
+                <h3>Bạn muốn rời phòng?</h3>
+                <p>Bạn sẽ thoát ra ngoài màn hình chính.</p>
+                <div className="gartic-modal-actions">
+                  <button type="button" className="secondary-btn" onClick={() => setShowExitConfirm(false)}>
+                    Ở lại
+                  </button>
+                  <button type="button" className="danger-btn" onClick={onExit}>
+                    Rời đi
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </main>
     );
@@ -403,224 +423,152 @@ export default function OnlineRoom({ session, onExit }: Props) {
   const canDraw = localIsDrawer && isDrawingPhase && view.status === 'playing';
 
   return (
-    <main className="online-playing">
-      {/* THANH THÔNG TIN ĐỈNH */}
-      <div className="room-topline">
-        <span>
-          Lượt {view.turnIndex + 1} · {view.category} · Mục tiêu: {view.targetScore} điểm
-        </span>
-        <span className="connection-state">
-          <span className={`live-dot ${p2pActive ? 'p2p' : ''}`} />
-          {p2pActive ? 'P2P Realtime (60fps)' : 'Đã kết nối'}
-        </span>
-      </div>
-
-      {/* BẢNG ĐIỂM NGƯỜI CHƠI */}
-      <header className="game-header">
-        <div className="round-info">
-          Phòng <strong>{roomCode}</strong> · Bạn là <strong>{localPlayer?.name}</strong>
+    <main className="gartic-playing-screen">
+      {/* THANH TOP BAR PHONG CÁCH GARTIC PHONE */}
+      <header className="gartic-play-topbar">
+        <div className="topbar-left">
+          <span className="room-pill">Phòng: <strong>{roomCode}</strong></span>
+          <span className="round-pill">Lượt {view.turnIndex + 1}</span>
+          <span className="target-pill">Mục tiêu: {view.targetScore}đ</span>
         </div>
-        <div className="scoreboard scoreboard-multi">
-          {view.players.map((player) => (
-            <div
-              key={player.index}
-              className={`score-chip ${player.index === drawerIndex ? 'drawer-turn' : ''} ${player.score >= view.targetScore ? 'winner-near' : ''}`}
+
+        {/* ĐỒNG HỒ ĐẾM NGƯỢC NỔI BẬT */}
+        <div className={`gartic-timer-box ${isGuessingPhase || view.phaseTimeLeftSeconds <= 10 ? 'danger-pulse' : ''}`}>
+          <Clock3 size={18} />
+          <span className="timer-text">00:{String(view.phaseTimeLeftSeconds).padStart(2, '0')}</span>
+          <small className="timer-desc">
+            {isDrawingPhase ? '60s Vẽ' : isGuessingPhase ? '20s Đoán' : 'Công bố'}
+          </small>
+        </div>
+
+        {/* NÚT RỜI PHÒNG LUÔN CÓ MẶT */}
+        <div className="topbar-right">
+          {isHost && (
+            <button
+              type="button"
+              className="gartic-icon-topbar-btn"
+              title="Chơi lại ván mới"
+              onClick={() => handleAction('restart')}
             >
-              <span className="chip-player-name">
-                {player.index === drawerIndex && '✏️ '}
-                {player.name}
-              </span>
-              <b>{view.scores[player.index] ?? 0}/{view.targetScore} đ</b>
-            </div>
-          ))}
+              <RotateCcw size={16} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="gartic-leave-topbar-btn"
+            onClick={() => setShowExitConfirm(true)}
+            title="Rời phòng trở về trang chủ"
+          >
+            <LogOut size={16} />
+            <span className="leave-text">Rời phòng</span>
+          </button>
         </div>
       </header>
 
-      {/* BANNER THÔNG BÁO PHA CHƠI */}
-      <div
-        className={`online-role-banner ${
-          isGuessingPhase ? 'danger-phase' : isRevealPhase ? 'reveal-phase' : localIsDrawer ? '' : 'guesser'
-        }`}
-      >
-        {isRevealPhase ? (
-          <>🎉 HẾT LƯỢT! Đáp án chính xác là: <strong>{view.lastRevealedWord}</strong></>
-        ) : isGuessingPhase ? (
-          <>⚡ HẾT GIỜ VẼ! 20 GIÂY ĐOÁN CỰC NHANH — GÕ ĐÁP ÁN BÊN DƯỚI!</>
-        ) : localIsDrawer ? (
-          <>🎨 Bạn đang vẽ! Bạn có 60 giây để vẽ từ bí mật cho bạn bè đoán.</>
+      {/* THANH BẢNG ĐIỂM NGANG TẤT CẢ NGƯỜI CHƠI */}
+      <div className="gartic-scoreboard-strip">
+        {view.players.map((player) => (
+          <div
+            key={player.index}
+            className={`gartic-score-tab ${player.index === drawerIndex ? 'is-drawing-now' : ''} ${player.index === myIndex ? 'is-me' : ''}`}
+          >
+            <span className="tab-name">
+              {player.index === drawerIndex && '🎨 '}
+              {player.name} {player.index === myIndex && '(Bạn)'}
+            </span>
+            <span className="tab-score">{view.scores[player.index] || 0}/{view.targetScore}đ</span>
+          </div>
+        ))}
+      </div>
+
+      {/* BANNER THÔNG BÁO VAI TRÒ / TỪ KHÓA BÍ MẬT */}
+      <div className="gartic-prompt-header-box">
+        {localIsDrawer && view.currentPrompt ? (
+          <div className="gartic-secret-word-card">
+            <span className="label">TỪ BÍ MẬT CẦN VẼ (CHỈ BẠN NHÌN THẤY):</span>
+            <strong className="secret-word">{view.currentPrompt}</strong>
+          </div>
+        ) : isRevealPhase ? (
+          <div className="gartic-secret-word-card reveal">
+            <span className="label">ĐÁP ÁN CHÍNH XÁC:</span>
+            <strong className="secret-word">{view.lastRevealedWord}</strong>
+          </div>
         ) : (
-          <>👀 <strong>{currentDrawer?.name}</strong> đang vẽ! Bạn có thể gõ câu trả lời bất kỳ lúc nào.</>
+          <div className="gartic-guesser-prompt-card">
+            <span className="label">BẠN ĐANG ĐOÁN TRANH:</span>
+            <strong className="guesser-instruction">
+              {isGuessingPhase ? '⚡ 20s ĐOÁN: Hãy nhập câu trả lời vào ô bên dưới!' : `Đang quan sát ${currentDrawer?.name} vẽ…`}
+            </strong>
+          </div>
         )}
       </div>
 
-      <div className="game-grid">
-        <section className="play-main">
-          <div className="turn-top">
-            <div className="role-pill">
-              <span>
-                {isDrawingPhase ? (
-                  <>✏️ <strong>{currentDrawer?.name}</strong> đang vẽ nét gợi ý</>
-                ) : isGuessingPhase ? (
-                  <span style={{ color: '#ff6b6b', fontWeight: 700 }}>🔥 GIAI ĐOẠN ĐOÁN (20s)</span>
-                ) : (
-                  <>🎉 Công bố kết quả</>
-                )}
-              </span>
-            </div>
+      {/* BẢNG VẼ CHUẨN GARTIC PHONE CÓ NÚT DONE! */}
+      <section className="gartic-drawing-viewport">
+        <OnlineDrawing
+          strokes={view.drawingStrokes}
+          revision={view.drawingRevision}
+          canDraw={canDraw}
+          drawerName={currentDrawer?.name}
+          onDone={handleFinishDrawingEarly}
+          onChange={handleDrawingChange}
+          onClearDrawing={handleClearDrawing}
+        />
+      </section>
 
-            {/* NÚT VẼ XONG SỚM CHO NGƯỜI VẼ */}
-            {localIsDrawer && isDrawingPhase && (
-              <button
-                type="button"
-                className="icon-btn-text"
-                disabled={isSubmitting}
-                onClick={handleFinishDrawingEarly}
-                title="Nếu đã vẽ xong, bấm để bạn bè vào đoán ngay lập tức"
-              >
-                <Sparkles size={15} /> Vẽ xong sớm (Cho đoán ngay)
-              </button>
-            )}
-
-            {isHost && (
-              <button
-                className="icon-btn"
-                aria-label="Chơi lại ván mới"
-                title="Bắt đầu lại ván đấu"
-                onClick={() => handleAction('restart')}
-              >
-                <RotateCcw size={17} />
-              </button>
-            )}
-          </div>
-
-          {/* ĐỒNG HỒ ĐẾM NGƯỢC THEO PHA */}
-          <div className="timer-wrap">
-            <div>
-              <div className={`timer ${isGuessingPhase || view.phaseTimeLeftSeconds <= 10 ? 'danger' : ''}`}>
-                00:{String(view.phaseTimeLeftSeconds).padStart(2, '0')}
-              </div>
-              <div className="timer-label">
-                <Clock3 style={{ width: 12, verticalAlign: '-2px', marginRight: 5 }} />
-                {isDrawingPhase ? 'Thời gian vẽ (60s)' : isGuessingPhase ? 'Thời gian đoán (20s)' : 'Chuyển lượt'}
-              </div>
-            </div>
-            <div className="meter" aria-label={`Còn ${view.phaseTimeLeftSeconds} giây`}>
-              <div
-                className={`meter-fill ${isGuessingPhase ? 'danger-meter' : ''}`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-
-          {/* TỪ KHÓA BÍ MẬT */}
-          {localIsDrawer && view.currentPrompt ? (
-            <div className="prompt-card">
-              <div className="prompt-label">Từ khóa bí mật bạn cần vẽ (Chỉ bạn thấy)</div>
-              <div className="prompt-word">{view.currentPrompt}</div>
-            </div>
-          ) : isRevealPhase ? (
-            <div className="prompt-card correct-reveal-card">
-              <div className="prompt-label">Đáp án của vòng này</div>
-              <div className="prompt-word" style={{ color: '#55d3bf' }}>{view.lastRevealedWord}</div>
-            </div>
+      {/* PHẢN HỒI KHI ĐOÁN */}
+      {lastFeedback && (
+        <div className={`gartic-feedback-toast ${lastFeedback.isCorrect ? 'correct' : 'wrong'}`}>
+          {lastFeedback.isCorrect ? (
+            <>🎉 CHÍNH XÁC! {lastFeedback.text} đoán đúng! (+1 Điểm)</>
           ) : (
-            <div className="prompt-card">
-              <div className="prompt-label">Từ bí mật</div>
-              <div className="prompt-word" style={{ fontSize: 'clamp(18px, 3.5vw, 24px)', color: '#aeb4c5' }}>
-                {isGuessingPhase ? '⚡ Đang trong 20s đoán! Gõ đáp án bên dưới!' : `Đang quan sát nét vẽ của ${currentDrawer?.name}…`}
-              </div>
-            </div>
+            <>{lastFeedback.text} — Chưa đúng, thử lại nhanh lên!</>
           )}
+        </div>
+      )}
 
-          {/* BẢNG VẼ ONLINE 3D */}
-          <OnlineDrawing
-            strokes={view.drawingStrokes}
-            revision={view.drawingRevision}
-            canDraw={canDraw}
-            onChange={handleDrawingChange}
-            onClearDrawing={handleClearDrawing}
+      {/* Ô NHẬP ĐOÁN TỰ ĐỘNG DÀNH CHO NGƯỜI ĐOÁN (MOBILE & DESKTOP) */}
+      {!localIsDrawer && (
+        <form onSubmit={handleSendGuess} className="gartic-guess-form-bar">
+          <input
+            type="text"
+            className="gartic-guess-input"
+            placeholder={isGuessingPhase ? '⚡ 20s ĐOÁN KHẨN CẤP: Gõ đáp án vào đây rồi Enter...' : 'Gõ từ bạn đoán vào đây (Enter để gửi)...'}
+            value={guessInput}
+            onChange={(e) => setGuessInput(e.target.value)}
+            autoFocus={isGuessingPhase}
+            disabled={isRevealPhase}
           />
+          <button
+            type="submit"
+            className="gartic-guess-send-btn"
+            disabled={!guessInput.trim() || isRevealPhase}
+          >
+            <Send size={18} />
+            <span>Gửi</span>
+          </button>
+        </form>
+      )}
 
-          {/* PHẢN HỒI KHI ĐOÁN */}
-          {lastFeedback && (
-            <div
-              className={`guess-feedback-banner ${lastFeedback.isCorrect ? 'correct' : 'wrong'}`}
-            >
-              {lastFeedback.isCorrect ? (
-                <>🎉 CHÍNH XÁC! {lastFeedback.text} đoán đúng! (+1 Điểm)</>
-              ) : (
-                <>{lastFeedback.text} — Chưa đúng, thử lại nhanh lên!</>
-              )}
-            </div>
-          )}
+      {actionError && <div className="online-error" role="alert">{actionError}</div>}
 
-          {/* Ô NHẬP ĐOÁN TỰ ĐỘNG DÀNH CHO NGƯỜI ĐOÁN */}
-          {!localIsDrawer && (
-            <form onSubmit={handleSendGuess} className="guess-input-container">
-              <input
-                type="text"
-                className="guess-input"
-                placeholder={isGuessingPhase ? '⚡ 20s ĐOÁN: Nhập từ bạn đoán vào đây rồi bấm Gửi (hoặc Enter)...' : 'Nhập dự đoán của bạn (Enter để gửi)...'}
-                value={guessInput}
-                onChange={(e) => setGuessInput(e.target.value)}
-                autoFocus={isGuessingPhase}
-                disabled={isRevealPhase}
-              />
-              <button
-                type="submit"
-                className="primary-btn guess-submit-btn"
-                disabled={!guessInput.trim() || isRevealPhase}
-              >
-                <Send size={16} /> Gửi
+      {/* POPUP XÁC NHẬN RỜI PHÒNG KHI ĐANG CHƠI */}
+      {showExitConfirm && (
+        <div className="gartic-modal-overlay">
+          <div className="gartic-modal-content">
+            <h3>Rời trận đấu?</h3>
+            <p>Bạn có chắc chắn muốn thoát về trang chủ không?</p>
+            <div className="gartic-modal-actions">
+              <button type="button" className="secondary-btn" onClick={() => setShowExitConfirm(false)}>
+                Tiếp tục chơi
               </button>
-            </form>
-          )}
-
-          {actionError && <div className="online-error" role="alert">{actionError}</div>}
-        </section>
-
-        {/* CỘT BÊN PHẢI: BẢNG TIẾN ĐỘ & BẢNG XẾP HẠNG */}
-        <aside className="game-side">
-          <section className="side-card">
-            <h3>Trạng thái trận đấu</h3>
-            <div className="role-row">
-              <span>Đang vẽ 🎨</span>
-              <b style={{ color: '#f7d55c' }}>{currentDrawer?.name}</b>
+              <button type="button" className="danger-btn" onClick={onExit}>
+                Rời phòng
+              </button>
             </div>
-            <div className="role-row">
-              <span>Giai đoạn</span>
-              <b style={{ color: isGuessingPhase ? '#ff6b6b' : '#55d3bf' }}>
-                {isDrawingPhase ? 'Vẽ hình (60s)' : isGuessingPhase ? 'Đoán từ (20s)' : 'Công bố'}
-              </b>
-            </div>
-            <div className="role-row">
-              <span>Mục tiêu thắng</span>
-              <b style={{ color: '#f7d55c' }}>{view.targetScore} Điểm</b>
-            </div>
-          </section>
-
-          <section className="side-card">
-            <h3>Bảng xếp hạng điểm</h3>
-            <div className="players-rank-list">
-              {[...view.players]
-                .sort((a, b) => (view.scores[b.index] || 0) - (view.scores[a.index] || 0))
-                .map((player, rank) => (
-                  <div key={player.index} className="rank-item-row">
-                    <span className="rank-badge">
-                      {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}
-                    </span>
-                    <span className="rank-name">
-                      {player.name} {player.index === session.playerIndex && '(Bạn)'}
-                    </span>
-                    <b className="rank-score">
-                      {view.scores[player.index] || 0} / {view.targetScore} đ
-                    </b>
-                  </div>
-                ))}
-            </div>
-          </section>
-        </aside>
-      </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

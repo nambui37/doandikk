@@ -802,6 +802,950 @@ h1,h2,h3,p { margin-top:0; }
   box-shadow: 0 0 0 4px rgba(247, 213, 92, 0.15);
 }
 
+/* ============================================================
+   GARTIC PHONE CONSOLE & DRAWING UI (CHUẨN HOẠT HỌA 3D)
+============================================================ */
+.gartic-draw-wrapper {
+  width: 100%;
+  max-width: 980px;
+  margin: 10px auto 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gartic-console-frame {
+  background: linear-gradient(180deg, #d82b52 0%, #a8193a 100%);
+  border: 4px solid #730e25;
+  border-radius: 26px;
+  padding: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.25);
+  position: relative;
+}
+
+/* CỘT BẢNG MÀU BÊN TRÁI */
+.gartic-left-panel {
+  background: #3e0c1a;
+  border: 3px solid #631429;
+  border-radius: 18px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.5);
+}
+
+.gartic-palette-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.gartic-color-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+  padding: 0;
+}
+.gartic-color-btn:hover {
+  transform: scale(1.15);
+}
+.gartic-color-btn.active {
+  border: 2.5px solid #ffffff !important;
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.gartic-current-color-preview {
+  width: 100%;
+  height: 38px;
+  border-radius: 10px;
+  border: 3px solid #631429;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* KHUNG GIẤY VẼ Ở GIỮA */
+.gartic-canvas-stage {
+  flex: 1;
+  min-height: 380px;
+  background: #ffffff;
+  border: 3px solid #1a1a2e;
+  border-radius: 16px;
+  box-shadow: 0 6px 0 #cfd5e2, 0 12px 0 #9ca3af, 0 18px 25px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.gartic-canvas-surface {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.gartic-canvas-surface.pen-active {
+  cursor: crosshair;
+}
+.gartic-canvas-surface.read-only {
+  pointer-events: none;
+}
+
+.gartic-spectator-badge {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  background: rgba(26, 31, 46, 0.88);
+  color: #f7d55c;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+/* CỘT CÔNG CỤ BÊN PHẢI */
+.gartic-right-panel {
+  background: #3e0c1a;
+  border: 3px solid #631429;
+  border-radius: 18px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.5);
+}
+
+.gartic-tools-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.gartic-tool-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 2px solid #571324;
+  background: #2a0812;
+  color: #ffb8c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.gartic-tool-btn:hover {
+  background: #500f22;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.gartic-tool-btn.active {
+  background: #ffffff;
+  color: #a8193a;
+  border-color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+}
+.gartic-tool-btn.danger {
+  color: #ff6b6b;
+}
+.gartic-tool-btn.danger:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* THANH ĐIỀU KHIỂN BÊN DƯỚI */
+.gartic-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  background: linear-gradient(180deg, #b81c3e 0%, #8c102c 100%);
+  border: 3px solid #631429;
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.gartic-size-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #3e0c1a;
+  padding: 8px 16px;
+  border-radius: 16px;
+  border: 2px solid #571324;
+}
+
+.gartic-size-dot-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s;
+}
+.gartic-size-dot-btn:hover {
+  transform: scale(1.15);
+}
+.gartic-size-dot-btn.active {
+  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.gartic-size-indicator {
+  border-radius: 50%;
+  background: #ffffff;
+  display: block;
+}
+
+/* NÚT DONE! LỚN CHUẨN GARTIC PHONE */
+.gartic-done-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: 18px;
+  border: 3px solid #1a1a2e;
+  background: #ffffff;
+  color: #3b1022;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #c2c7d4, 0 8px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.gartic-done-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #c2c7d4, 0 12px 20px rgba(0, 0, 0, 0.4);
+}
+.gartic-done-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #c2c7d4, 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+.gartic-done-btn .check-icon {
+  color: #10b981;
+}
+
+/* ============================================================
+   GIAO DIỆN PHÒNG CHỜ (LOBBY) & TOPBAR GARTIC PHONE
+============================================================ */
+.gartic-lobby-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.gartic-lobby-card {
+  width: min(720px, 100%);
+  background: #171c2b;
+  border: 3px solid #2e3752;
+  border-radius: 28px;
+  padding: clamp(20px, 4vw, 36px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.gartic-lobby-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.gartic-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(85, 211, 191, 0.12);
+  color: #55d3bf;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gartic-leave-btn-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  border: 1px solid #4a2828;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ff9d9d;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gartic-leave-btn-header:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+}
+
+.gartic-lobby-title {
+  font-size: clamp(24px, 5vw, 38px);
+  font-weight: 900;
+  color: #f8f0df;
+  margin: 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.gartic-code-glow {
+  color: #f7d55c;
+  font-family: var(--app-font-mono, monospace);
+  background: rgba(247, 213, 92, 0.12);
+  padding: 2px 14px;
+  border-radius: 14px;
+  border: 2px dashed #f7d55c;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+.gartic-lobby-desc {
+  color: #aeb4c5;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.gartic-invite-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.gartic-big-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 16px;
+  border: 2px solid #55d3bf;
+  background: rgba(85, 211, 191, 0.15);
+  color: #55d3bf;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.gartic-big-copy-btn:hover {
+  background: rgba(85, 211, 191, 0.28);
+  transform: translateY(-2px);
+}
+
+.gartic-icon-copy-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 2px solid #363d52;
+  background: #202538;
+  color: #e8eaf1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.gartic-icon-copy-btn:hover {
+  border-color: #f7d55c;
+  color: #f7d55c;
+}
+
+/* THẺ NGƯỜI CHƠI POD GRID */
+.gartic-players-section {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.gartic-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #f8f0df;
+  margin-bottom: 12px;
+}
+
+.gartic-players-pod-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.gartic-player-pod {
+  background: #20263a;
+  border: 2px solid #333d59;
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.gartic-player-pod.is-me {
+  border-color: #55d3bf;
+  background: rgba(85, 211, 191, 0.08);
+}
+.gartic-player-pod.waiting {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.6;
+}
+
+.gartic-avatar-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f7d55c, #f97316);
+  color: #1a1a2e;
+  font-size: 16px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.gartic-avatar-circle.dashed {
+  background: transparent;
+  border: 2px dashed #4b5563;
+  color: #6b7280;
+}
+
+.gartic-pod-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gartic-pod-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8f0df;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gartic-pod-role {
+  font-size: 11px;
+  color: #9ca3af;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.gartic-pod-role .crown-icon {
+  color: #f7d55c;
+}
+
+/* THÔNG TIN LUẬT */
+.gartic-rules-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #1e2436;
+  border: 1px solid #333d59;
+  border-radius: 16px;
+  padding: 12px 16px;
+  text-align: left;
+  margin-bottom: 20px;
+}
+.gartic-rules-card .trophy-icon {
+  color: #f7d55c;
+  flex-shrink: 0;
+}
+.gartic-rules-card strong {
+  display: block;
+  font-size: 13px;
+  color: #f7d55c;
+}
+.gartic-rules-card small {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.gartic-primary-play-btn {
+  width: 100%;
+  height: 56px;
+  border-radius: 18px;
+  border: 0;
+  background: linear-gradient(135deg, #f7d55c 0%, #f59e0b 100%);
+  color: #171a25;
+  font-size: 16px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #b45309, 0 10px 24px rgba(245, 158, 11, 0.4);
+  transition: all 0.15s ease;
+}
+.gartic-primary-play-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #b45309, 0 14px 28px rgba(245, 158, 11, 0.5);
+}
+.gartic-primary-play-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.gartic-waiting-host-box {
+  padding: 16px;
+  border-radius: 16px;
+  background: #1e2436;
+  color: #55d3bf;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ============================================================
+   PLAYING SCREEN & TOPBAR
+============================================================ */
+.gartic-playing-screen {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding: 8px 16px 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gartic-play-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #171c2b;
+  border: 2px solid #2e3752;
+  border-radius: 18px;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.room-pill, .round-pill, .target-pill {
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: #20263a;
+  border: 1px solid #333d59;
+  font-size: 12px;
+  color: #c8cddc;
+}
+.target-pill {
+  color: #f7d55c;
+  font-weight: 700;
+}
+
+.gartic-timer-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 14px;
+  background: rgba(247, 213, 92, 0.15);
+  border: 2px solid #f7d55c;
+  color: #f7d55c;
+  font-weight: 900;
+}
+.gartic-timer-box.danger-pulse {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ff6b6b;
+  animation: pulse-danger 1.2s infinite;
+}
+.timer-text {
+  font-size: 18px;
+  font-family: var(--app-font-mono, monospace);
+}
+.timer-desc {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gartic-icon-topbar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #333d59;
+  background: #20263a;
+  color: #aeb4c5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.gartic-icon-topbar-btn:hover {
+  color: #ffffff;
+}
+
+.gartic-leave-topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid #4a2828;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ff9d9d;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gartic-leave-topbar-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+}
+
+/* THANH SCOREBOARD NGANG */
+.gartic-scoreboard-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  margin-bottom: 6px;
+}
+.gartic-scoreboard-strip::-webkit-scrollbar {
+  height: 4px;
+}
+.gartic-scoreboard-strip::-webkit-scrollbar-thumb {
+  background: #333d59;
+  border-radius: 4px;
+}
+
+.gartic-score-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: #171c2b;
+  border: 1px solid #2e3752;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.gartic-score-tab.is-drawing-now {
+  border-color: #f7d55c;
+  background: rgba(247, 213, 92, 0.12);
+  color: #f7d55c;
+}
+.gartic-score-tab.is-me {
+  border-color: #55d3bf;
+}
+.tab-name {
+  font-weight: 700;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-score {
+  font-weight: 900;
+  color: #55d3bf;
+}
+
+/* TỪ KHÓA BÍ MẬT CARD */
+.gartic-prompt-header-box {
+  margin-bottom: 8px;
+}
+.gartic-secret-word-card {
+  background: linear-gradient(135deg, rgba(247, 213, 92, 0.15), rgba(245, 158, 11, 0.15));
+  border: 2px solid #f7d55c;
+  border-radius: 16px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.gartic-secret-word-card.reveal {
+  border-color: #55d3bf;
+  background: rgba(85, 211, 191, 0.15);
+}
+.gartic-secret-word-card .label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #f7d55c;
+  letter-spacing: 0.05em;
+}
+.gartic-secret-word-card.reveal .label {
+  color: #55d3bf;
+}
+.secret-word {
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.gartic-guesser-prompt-card {
+  background: #171c2b;
+  border: 2px solid #2e3752;
+  border-radius: 16px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.gartic-guesser-prompt-card .label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #aeb4c5;
+}
+.guesser-instruction {
+  font-size: 15px;
+  font-weight: 800;
+  color: #f8f0df;
+}
+
+/* Ô NHẬP ĐOÁN TỰ ĐỘNG CHUẨN GARTIC */
+.gartic-guess-form-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.gartic-guess-input {
+  flex: 1;
+  height: 52px;
+  padding: 0 18px;
+  border-radius: 16px;
+  border: 3px solid #2e3752;
+  background: #171c2b;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  outline: none;
+  transition: all 0.2s;
+}
+.gartic-guess-input:focus {
+  border-color: #f7d55c;
+  box-shadow: 0 0 0 4px rgba(247, 213, 92, 0.2);
+}
+
+.gartic-guess-send-btn {
+  height: 52px;
+  padding: 0 24px;
+  border-radius: 16px;
+  border: 0;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transition: all 0.15s;
+}
+.gartic-guess-send-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45);
+}
+.gartic-guess-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gartic-feedback-toast {
+  padding: 10px 16px;
+  border-radius: 12px;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  animation: slide-up 0.2s ease;
+}
+.gartic-feedback-toast.correct {
+  background: rgba(16, 185, 129, 0.2);
+  border: 2px solid #10b981;
+  color: #34d399;
+}
+.gartic-feedback-toast.wrong {
+  background: rgba(239, 68, 68, 0.2);
+  border: 2px solid #ef4444;
+  color: #fca5a5;
+}
+
+/* MODAL XÁC NHẬN RỜI PHÒNG */
+.gartic-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(5px);
+  padding: 20px;
+}
+
+.gartic-modal-content {
+  background: #171c2b;
+  border: 3px solid #333d59;
+  border-radius: 24px;
+  padding: 24px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+.gartic-modal-content h3 {
+  font-size: 20px;
+  font-weight: 900;
+  color: #f8f0df;
+  margin-bottom: 8px;
+}
+.gartic-modal-content p {
+  color: #9ca3af;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+.gartic-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+.gartic-modal-actions button {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+.danger-btn {
+  background: #ef4444;
+  color: #ffffff;
+  border: 0;
+  cursor: pointer;
+}
+.danger-btn:hover {
+  background: #dc2626;
+}
+
+/* ============================================================
+   RESPONSIVE HOÀN HẢO CHO ĐIỆN THOẠI (MOBILE)
+============================================================ */
+@media (max-width: 768px) {
+  .gartic-console-frame {
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+    border-radius: 20px;
+  }
+
+  .gartic-left-panel {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    padding: 8px;
+    overflow-x: auto;
+  }
+  .gartic-palette-grid {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .gartic-color-btn {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .gartic-current-color-preview {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .gartic-right-panel {
+    flex-direction: row;
+    width: 100%;
+    justify-content: center;
+    padding: 8px;
+  }
+  .gartic-tools-grid {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .gartic-tool-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .gartic-canvas-stage {
+    min-height: 290px;
+    height: 52vw;
+  }
+
+  .gartic-bottom-bar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .gartic-size-picker {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .gartic-done-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+  }
+
+  .gartic-playing-screen {
+    padding: 6px 8px 24px;
+  }
+  .gartic-play-topbar {
+    padding: 8px 10px;
+  }
+  .leave-text {
+    display: none;
+  }
+  .secret-word {
+    font-size: 20px;
+  }
+}
+
+
 .guess-submit-btn {
   height: 52px;
   padding: 0 20px;

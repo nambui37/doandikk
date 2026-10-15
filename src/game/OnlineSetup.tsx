@@ -34,7 +34,11 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSubmit || pending) return;
+    if (pending) return;
+    if (!name.trim()) {
+      setError('⚠️ Vui lòng nhập tên biệt danh của bạn trước khi tạo phòng!');
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -54,7 +58,15 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
 
   const handleJoin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSubmit || pending) return;
+    if (pending) return;
+    if (!name.trim()) {
+      setError('⚠️ Vui lòng nhập tên biệt danh của bạn!');
+      return;
+    }
+    if (roomCode.trim().length !== 6) {
+      setError('⚠️ Vui lòng nhập đủ 6 ký tự mã phòng!');
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -201,7 +213,7 @@ export default function OnlineSetup({ onSession, onBack }: Props) {
             <button
               type="submit"
               className="primary-btn full-btn"
-              disabled={!canSubmit || pending}
+              disabled={pending}
               style={{ marginTop: 16 }}
             >
               {pending ? (
