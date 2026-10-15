@@ -1,1 +1,1 @@
-export { wordBank, categories } from '../../api/word-bank';
+export { wordBank, categories } from '../../api/_lib/word-bank';

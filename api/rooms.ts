@@ -5,7 +5,7 @@ import {
   performRoomAction,
   updateRoomDrawing,
   RoomStoreError,
-} from './room-store';
+} from './_lib/room-store';
 
 export default async function handler(req: any, res: any) {
   // CORS Headers
