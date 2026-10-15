@@ -1,60 +1,80 @@
 import { Award, RotateCcw, Settings2 } from 'lucide-react';
 import { useEffect } from 'react';
 import confetti from 'canvas-confetti';
+import type { RoomPlayer } from './types';
 import type { GameConfig } from './SetupScreen';
 
 type ResultsProps = {
-  config: GameConfig;
-  scores: [number, number];
+  config?: GameConfig;
+  players?: RoomPlayer[];
+  scores: number[];
   onAgain: () => void;
   onSetup: () => void;
 };
 
-export default function ResultsScreen({ config, scores, onAgain, onSetup }: ResultsProps) {
-  const winnerIndex = scores[0] === scores[1] ? -1 : scores[0] > scores[1] ? 0 : 1;
-  const winner = winnerIndex < 0 ? '' : config.players[winnerIndex as 0 | 1];
+export default function ResultsScreen({ config, players, scores, onAgain, onSetup }: ResultsProps) {
+  // Chuẩn hóa danh sách người chơi
+  const playerList = players
+    ? players.map((p) => ({ name: p.name, score: scores[p.index] || 0 }))
+    : (config?.players || []).map((name, index) => ({ name, score: scores[index] || 0 }));
+
+  // Xếp hạng theo điểm từ cao xuống thấp
+  const sorted = [...playerList].sort((a, b) => b.score - a.score);
+  const winner = sorted[0];
+  const isTie = sorted.length > 1 && sorted[0].score === sorted[1].score && sorted[0].score > 0;
 
   useEffect(() => {
-    // Pháo hoa chiến thắng
     confetti({
-      particleCount: 80,
-      spread: 70,
+      particleCount: 90,
+      spread: 75,
       origin: { y: 0.5 },
     });
   }, []);
+
+  const getRankBadge = (rank: number) => {
+    if (rank === 0) return '🥇 Quán quân';
+    if (rank === 1) return '🥈 Á quân';
+    if (rank === 2) return '🥉 Hạng 3';
+    return `#${rank + 1}`;
+  };
 
   return (
     <main className="screen">
       <section className="results fade-in">
         <div className="winner-kicker">
-          <Award style={{ width: 15, verticalAlign: '-4px', marginRight: 6 }} /> Kết quả chung cuộc
+          <Award style={{ width: 15, verticalAlign: '-4px', marginRight: 6 }} /> Bảng vàng danh dự
         </div>
         <h1 className="winner-title">
-          {winnerIndex < 0 ? (
+          {isTie ? (
             <>
-              Hai người<br />
+              Hai bạn<br />
               <span>Ngang tài ngang sức!</span>
             </>
-          ) : (
+          ) : winner ? (
             <>
-              Ý hợp tâm đầu,<br />
-              <span>{winner} Thắng!</span>
+              Vẽ đẹp đoán tài,<br />
+              <span>{winner.name} Vô địch! 🏆</span>
             </>
+          ) : (
+            'Trận đấu hoàn thành!'
           )}
         </h1>
-        <p className="results-sub">Bốn lượt đấu gay cấn đã khép lại. Ván tiếp theo, ai sẽ đọc vị ai?</p>
-        <div className="result-scores">
-          {config.players.map((player, index) => (
+        <p className="results-sub">Ván đấu đã khép lại với những màn vẽ tranh siêu hài hước!</p>
+
+        <div className="multiplayer-results-grid">
+          {sorted.map((item, rank) => (
             <div
-              className={`result-score ${winnerIndex === index ? 'winner' : ''}`}
-              key={player}
+              key={item.name}
+              className={`result-score ${rank === 0 && !isTie ? 'winner' : ''}`}
             >
-              <small>{player}{winnerIndex === index ? ' · Người chiến thắng 🏆' : ''}</small>
-              <strong>{scores[index]} đ</strong>
+              <div className="rank-badge-text">{getRankBadge(rank)}</div>
+              <strong>{item.name}</strong>
+              <div className="final-points">{item.score} điểm</div>
             </div>
           ))}
         </div>
-        <div className="result-buttons">
+
+        <div className="result-buttons" style={{ marginTop: 22 }}>
           <button className="secondary-btn" onClick={onSetup}>
             <Settings2 /> Đổi thiết lập
           </button>

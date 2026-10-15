@@ -1,5 +1,4 @@
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'paused' | 'results';
-export type RoomMode = 'talk' | 'draw';
 export type RoomAction = 'start' | 'correct' | 'pass' | 'pause' | 'resume' | 'restart';
 
 export type DrawingPoint = { x: number; y: number };
@@ -14,6 +13,7 @@ export type RoomPlayer = {
   name: string;
   isHost: boolean;
   online: boolean;
+  score: number;
 };
 
 export type RoomView = {
@@ -21,10 +21,11 @@ export type RoomView = {
   status: RoomStatus;
   players: RoomPlayer[];
   category: string;
-  mode: RoomMode;
   turnIndex: number;
+  totalTurns: number;
+  drawerIndex: number;
   timeLeftSeconds: number;
-  scores: [number, number];
+  scores: number[];
   correctThisTurn: number;
   currentPrompt: string | null;
   drawingRevision: number;
@@ -41,7 +42,6 @@ export type RoomSession = {
 export type RoomCreateInput = {
   playerName: string;
   category: string;
-  mode: RoomMode;
 };
 
 export type RoomJoinInput = {

@@ -1,4 +1,3 @@
-import type { IncomingMessage, ServerResponse } from 'http';
 import {
   createRoom,
   getRoomViewForToken,
@@ -9,7 +8,6 @@ import {
 } from './room-store';
 
 export default async function handler(req: any, res: any) {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -19,7 +17,6 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // Parse body if string or buffer
   let body = req.body;
   if (typeof body === 'string') {
     try {
@@ -29,19 +26,17 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  // Extract auth token
   const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
   const tokenMatch = typeof authHeader === 'string' ? authHeader.match(/^Bearer\s+(.+)$/i) : null;
   const token = tokenMatch ? tokenMatch[1] : undefined;
 
-  // Normalize path & query
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const pathParts = url.pathname.replace(/^\/api\/rooms\/?/, '').split('/').filter(Boolean);
 
   try {
-    // 1. POST /api/rooms - Tạo phòng mới
+    // 1. POST /api/rooms - Tạo phòng
     if (req.method === 'POST' && pathParts.length === 0) {
-      const { playerName, category, mode } = body || {};
+      const { playerName, category } = body || {};
       if (!playerName || typeof playerName !== 'string' || !playerName.trim()) {
         res.status(400).json({ error: 'Vui lòng nhập tên người chơi.' });
         return;
@@ -49,7 +44,6 @@ export default async function handler(req: any, res: any) {
       const session = createRoom({
         playerName: playerName.trim(),
         category: category || 'Đời thường',
-        mode: mode === 'draw' ? 'draw' : 'talk',
       });
       res.status(201).json(session);
       return;
@@ -63,7 +57,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // 2. POST /api/rooms/:roomCode/join - Tham gia phòng
+    // 2. POST /api/rooms/:roomCode/join - Vào phòng
     if (req.method === 'POST' && actionOrSub === 'join') {
       const { playerName } = body || {};
       if (!playerName || typeof playerName !== 'string' || !playerName.trim()) {
@@ -82,19 +76,19 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // 4. POST /api/rooms/:roomCode/actions - Thực hiện hành động
+    // 4. POST /api/rooms/:roomCode/actions - Hành động
     if (req.method === 'POST' && actionOrSub === 'actions') {
-      const { action } = body || {};
+      const { action, targetGuesserIndex } = body || {};
       if (!action) {
         res.status(400).json({ error: 'Thiếu hành động (action).' });
         return;
       }
-      const view = performRoomAction(roomCode, token, action);
+      const view = performRoomAction(roomCode, token, action, targetGuesserIndex);
       res.status(200).json(view);
       return;
     }
 
-    // 5. PUT /api/rooms/:roomCode/drawing - Đồng bộ bảng vẽ
+    // 5. PUT /api/rooms/:roomCode/drawing - Bảng vẽ
     if (req.method === 'PUT' && actionOrSub === 'drawing') {
       const { revision, strokes } = body || {};
       const view = updateRoomDrawing(roomCode, token, {

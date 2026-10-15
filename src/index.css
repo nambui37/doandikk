@@ -519,3 +519,213 @@ h1,h2,h3,p { margin-top:0; }
 .share-buttons-row .link-btn:hover {
   background: rgba(85, 211, 191, 0.2);
 }
+
+/* Giao diện phòng nhiều người chơi (2 - 8 người) */
+.multiplayer-lobby-list {
+  margin: 18px 0;
+  text-align: left;
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.player-card-chip {
+  padding: 12px;
+  background: #1e2436;
+  border: 1px solid #363d52;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.player-card-chip.host {
+  border-color: #f7d55c;
+  background: rgba(247, 213, 92, 0.08);
+}
+.player-card-chip.waiting-chip {
+  border: 1px dashed #363d52;
+  background: transparent;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.player-card-chip.waiting-chip small {
+  color: #71798f;
+  font-size: 11px;
+}
+
+.player-chip-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.host-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #f7d55c;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(247, 213, 92, 0.15);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.online-dot-mini {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #55d3bf;
+  box-shadow: 0 0 6px #55d3bf;
+}
+
+.player-chip-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8f0df;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-card-chip small {
+  font-size: 11px;
+  color: #8f97ab;
+}
+
+/* Scoreboard nhiều người chơi */
+.scoreboard-multi {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  max-width: 100%;
+}
+.scoreboard-multi::-webkit-scrollbar {
+  height: 4px;
+}
+.scoreboard-multi::-webkit-scrollbar-thumb {
+  background: #363d52;
+  border-radius: 4px;
+}
+
+.score-chip.drawer-turn {
+  border-color: #f7d55c;
+  background: rgba(247, 213, 92, 0.12);
+  box-shadow: 0 0 10px rgba(247, 213, 92, 0.2);
+}
+
+.chip-player-name {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* Nút trao điểm cho người vẽ khi có nhiều người đoán */
+.drawer-actions-container {
+  margin-top: 14px;
+}
+
+.guesser-award-box {
+  background: #171b29;
+  border: 1px solid #363d52;
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+}
+
+.award-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f7d55c;
+  margin-bottom: 10px;
+}
+
+.award-buttons-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.award-guesser-btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid #55d3bf;
+  background: rgba(85, 211, 191, 0.12);
+  color: #55d3bf;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+.award-guesser-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(85, 211, 191, 0.25);
+  box-shadow: 0 4px 12px rgba(85, 211, 191, 0.2);
+}
+
+/* Mini ranking trong aside */
+.player-rankings-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #1a1f30;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.ranking-row .rank-num {
+  color: #f7d55c;
+  font-weight: 700;
+  width: 24px;
+}
+.ranking-row .rank-name {
+  flex: 1;
+  color: #d1d5db;
+  margin: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ranking-row .rank-score {
+  color: #55d3bf;
+}
+
+/* Kết quả bảng xếp hạng nhiều người chơi */
+.multiplayer-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.rank-badge-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f7d55c;
+  margin-bottom: 6px;
+}
+
+.final-points {
+  font-size: 13px;
+  color: #55d3bf;
+  font-weight: 700;
+  margin-top: 4px;
+}

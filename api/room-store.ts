@@ -2,7 +2,6 @@ import { randomBytes } from 'node:crypto';
 import { wordBank } from '../src/game/words';
 
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'paused' | 'results';
-export type RoomMode = 'talk' | 'draw';
 export type RoomAction = 'start' | 'correct' | 'pass' | 'pause' | 'resume' | 'restart';
 
 export type DrawingPoint = { x: number; y: number };
@@ -22,12 +21,12 @@ type GameRoom = {
   code: string;
   players: RoomPlayerRecord[];
   category: string;
-  mode: RoomMode;
   status: RoomStatus;
   turnIndex: number;
+  totalTurns: number;
   turnEndsAt: number | null;
   pausedRemainingMs: number | null;
-  scores: [number, number];
+  scores: number[]; // Điểm số của từng người chơi [player0, player1, player2, ...]
   correctThisTurn: number;
   wordIndex: number;
   words: string[];
@@ -44,12 +43,14 @@ export type RoomView = {
     name: string;
     isHost: boolean;
     online: boolean;
+    score: number;
   }>;
   category: string;
-  mode: RoomMode;
   turnIndex: number;
+  totalTurns: number;
+  drawerIndex: number; // Người đang vẽ ở lượt này
   timeLeftSeconds: number;
-  scores: [number, number];
+  scores: number[];
   correctThisTurn: number;
   currentPrompt: string | null;
   drawingRevision: number;
@@ -67,11 +68,11 @@ export class RoomStoreError extends Error {
 }
 
 const TURN_LENGTH_MS = 60_000;
-const ROOM_TTL_MS = 8 * 60 * 60 * 1000; // 8 tiếng
-const ONLINE_WINDOW_MS = 25_000;
+const ROOM_TTL_MS = 8 * 60 * 60 * 1000;
+const ONLINE_WINDOW_MS = 30_000;
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const MAX_PLAYERS_PER_ROOM = 8;
 
-// Lưu trữ toàn cục đảm bảo không bị xoá khi Vercel hot-reload
 const globalStore = globalThis as unknown as { __HBOMY_ROOMS__?: Map<string, GameRoom> };
 if (!globalStore.__HBOMY_ROOMS__) {
   globalStore.__HBOMY_ROOMS__ = new Map<string, GameRoom>();
@@ -146,7 +147,8 @@ function finishExpiredTurns(room: GameRoom, now: number): void {
     room.correctThisTurn = 0;
     clearDrawing(room);
 
-    if (room.turnIndex >= 3) {
+    // Kiểm tra đã hết số lượt của ván chưa
+    if (room.turnIndex >= room.totalTurns - 1) {
       room.status = 'results';
       room.turnEndsAt = null;
       return;
@@ -158,9 +160,9 @@ function finishExpiredTurns(room: GameRoom, now: number): void {
 }
 
 export function roomView(room: GameRoom, playerIndex: number, now: number): RoomView {
-  const isClueGiver = room.turnIndex % 2 === playerIndex;
-  const canSeePrompt =
-    isClueGiver && (room.status === 'playing' || room.status === 'paused');
+  const currentDrawerIndex = room.players.length > 0 ? room.turnIndex % room.players.length : 0;
+  const isDrawer = currentDrawerIndex === playerIndex;
+  const canSeePrompt = isDrawer && (room.status === 'playing' || room.status === 'paused');
 
   return {
     roomCode: room.code,
@@ -170,10 +172,12 @@ export function roomView(room: GameRoom, playerIndex: number, now: number): Room
       name: player.name,
       isHost: index === 0,
       online: now - player.lastSeenAt <= ONLINE_WINDOW_MS,
+      score: room.scores[index] || 0,
     })),
     category: room.category,
-    mode: room.mode,
     turnIndex: room.turnIndex,
+    totalTurns: room.totalTurns,
+    drawerIndex: currentDrawerIndex,
     timeLeftSeconds: Math.min(
       60,
       Math.ceil(remainingMilliseconds(room, now) / 1000),
@@ -201,7 +205,6 @@ function touchPlayer(room: GameRoom, playerIndex: number, now: number): void {
 export function createRoom(input: {
   playerName: string;
   category: string;
-  mode: RoomMode;
 }) {
   const now = Date.now();
   expireInactiveRooms(now);
@@ -213,13 +216,13 @@ export function createRoom(input: {
   const room: GameRoom = {
     code,
     players: [{ name: input.playerName, token, lastSeenAt: now }],
-    category: input.category,
-    mode: input.mode,
+    category: input.category || 'Đời thường',
     status: 'waiting',
     turnIndex: 0,
+    totalTurns: 4, // Mặc định, sẽ cập nhật khi bấm bắt đầu theo số lượng người
     turnEndsAt: null,
     pausedRemainingMs: null,
-    scores: [0, 0],
+    scores: [0],
     correctThisTurn: 0,
     wordIndex: 0,
     words: shuffled(wordBank[input.category] ?? wordBank['Đời thường']),
@@ -241,33 +244,43 @@ export function joinRoom(code: string, playerName: string) {
   const room = findRoom(code);
   const now = Date.now();
 
-  // Kiểm tra xem người này có phải player cũ kết nối lại không
-  const existingPlayer = room.players.find(p => p.name.trim().toLowerCase() === playerName.trim().toLowerCase());
-  if (existingPlayer) {
+  // Kiểm tra nếu là người cũ kết nối lại theo tên
+  const existingIndex = room.players.findIndex(
+    (p) => p.name.trim().toLowerCase() === playerName.trim().toLowerCase(),
+  );
+
+  if (existingIndex >= 0) {
+    const existingPlayer = room.players[existingIndex];
     existingPlayer.lastSeenAt = now;
-    const pIdx = room.players.indexOf(existingPlayer);
     return {
       roomCode: room.code,
       playerToken: existingPlayer.token,
-      playerIndex: pIdx,
-      view: roomView(room, pIdx, now),
+      playerIndex: existingIndex,
+      view: roomView(room, existingIndex, now),
     };
   }
 
-  if (room.players.length >= 2 || (room.status !== 'waiting' && room.status !== 'ready')) {
-    throw new RoomStoreError(409, 'Phòng đã đủ 2 người hoặc ván chơi đang diễn ra.');
+  // Nếu phòng đang chơi dở hoặc đã đủ số lượng tối đa
+  if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
+    throw new RoomStoreError(409, `Phòng đã đầy (tối đa ${MAX_PLAYERS_PER_ROOM} người).`);
+  }
+
+  if (room.status !== 'waiting' && room.status !== 'ready') {
+    throw new RoomStoreError(409, 'Ván chơi đang diễn ra. Hãy đợi ván sau nhé.');
   }
 
   const token = createPlayerToken();
+  const newIndex = room.players.length;
   room.players.push({ name: playerName, token, lastSeenAt: now });
+  room.scores.push(0);
   room.status = 'ready';
   room.lastActivityAt = now;
 
   return {
     roomCode: room.code,
     playerToken: token,
-    playerIndex: 1,
-    view: roomView(room, 1, now),
+    playerIndex: newIndex,
+    view: roomView(room, newIndex, now),
   };
 }
 
@@ -284,6 +297,7 @@ export function performRoomAction(
   code: string,
   token: string | undefined,
   action: RoomAction,
+  targetGuesserIndex?: number,
 ): RoomView {
   const room = findRoom(code);
   const playerIndex = playerIndexForToken(room, token);
@@ -293,15 +307,18 @@ export function performRoomAction(
 
   if (action === 'start') {
     if (playerIndex !== 0) {
-      throw new RoomStoreError(403, 'Chỉ chủ phòng mới có quyền bắt đầu ván.');
+      throw new RoomStoreError(403, 'Chỉ chủ phòng mới có thể bắt đầu ván đấu.');
     }
-    if (room.players.length !== 2) {
-      throw new RoomStoreError(400, 'Cần đủ hai người trong phòng để bắt đầu.');
+    if (room.players.length < 2) {
+      throw new RoomStoreError(400, 'Cần ít nhất 2 người trong phòng để bắt đầu.');
     }
     room.status = 'playing';
     room.turnIndex = 0;
+    // Mỗi người chơi được vẽ 2 lượt
+    room.totalTurns = room.players.length * 2;
     room.turnEndsAt = now + TURN_LENGTH_MS;
     room.pausedRemainingMs = null;
+    room.scores = room.players.map(() => 0);
     room.lastActivityAt = now;
     return roomView(room, playerIndex, now);
   }
@@ -314,7 +331,7 @@ export function performRoomAction(
     room.turnIndex = 0;
     room.turnEndsAt = null;
     room.pausedRemainingMs = null;
-    room.scores = [0, 0];
+    room.scores = room.players.map(() => 0);
     room.correctThisTurn = 0;
     room.wordIndex = 0;
     room.words = shuffled(wordBank[room.category] ?? wordBank['Đời thường']);
@@ -324,9 +341,7 @@ export function performRoomAction(
   }
 
   if (action === 'pause') {
-    if (room.status !== 'playing') {
-      return roomView(room, playerIndex, now);
-    }
+    if (room.status !== 'playing') return roomView(room, playerIndex, now);
     room.pausedRemainingMs = remainingMilliseconds(room, now);
     room.turnEndsAt = null;
     room.status = 'paused';
@@ -335,9 +350,7 @@ export function performRoomAction(
   }
 
   if (action === 'resume') {
-    if (room.status !== 'paused') {
-      return roomView(room, playerIndex, now);
-    }
+    if (room.status !== 'paused') return roomView(room, playerIndex, now);
     room.status = 'playing';
     room.turnEndsAt = now + (room.pausedRemainingMs ?? TURN_LENGTH_MS);
     room.pausedRemainingMs = null;
@@ -345,20 +358,39 @@ export function performRoomAction(
     return roomView(room, playerIndex, now);
   }
 
-  // Đang không chơi
   if (room.status !== 'playing') {
     return roomView(room, playerIndex, now);
   }
 
-  // Người ra gợi ý xác nhận đoán đúng hoặc bỏ qua
-  if (room.turnIndex % 2 !== playerIndex) {
-    throw new RoomStoreError(403, 'Chỉ người ra gợi ý mới có thể xác nhận đáp án.');
+  const currentDrawerIndex = room.turnIndex % room.players.length;
+
+  // Chỉ người đang vẽ mới có thể xác nhận đoán đúng hoặc bỏ qua
+  if (currentDrawerIndex !== playerIndex) {
+    throw new RoomStoreError(403, 'Chỉ người đang vẽ mới có thể xác nhận đáp án.');
   }
 
   if (action === 'correct') {
-    const guesserIndex = 1 - playerIndex;
     const secondsLeft = Math.floor(remainingMilliseconds(room, now) / 1000);
-    room.scores[guesserIndex] += 100 + secondsLeft * 20;
+    const guesserPoints = 100 + secondsLeft * 20;
+
+    // Xác định người đoán đúng:
+    // Nếu có chỉ định targetGuesserIndex hợp lệ thì cộng điểm cho người đó,
+    // nếu phòng 2 người thì tự động cộng cho người còn lại.
+    let awardedGuesser = targetGuesserIndex;
+    if (awardedGuesser === undefined || awardedGuesser === currentDrawerIndex || !room.players[awardedGuesser]) {
+      // Mặc định chọn guesser đầu tiên khác người vẽ
+      awardedGuesser = room.players.findIndex((_, idx) => idx !== currentDrawerIndex);
+    }
+
+    if (awardedGuesser >= 0 && room.scores[awardedGuesser] !== undefined) {
+      room.scores[awardedGuesser] += guesserPoints;
+    }
+
+    // Người vẽ gợi ý xuất sắc cũng được thưởng 50 điểm
+    if (room.scores[currentDrawerIndex] !== undefined) {
+      room.scores[currentDrawerIndex] += 50;
+    }
+
     room.correctThisTurn += 1;
   }
 
@@ -379,14 +411,15 @@ export function updateRoomDrawing(
   finishExpiredTurns(room, now);
   touchPlayer(room, playerIndex, now);
 
-  // FIX LỖI 403: Nếu không trong lượt vẽ hoặc không phải người vẽ, im lặng bỏ qua không quăng lỗi 403
-  if (room.status !== 'playing' || room.mode !== 'draw' || room.turnIndex % 2 !== playerIndex) {
+  const currentDrawerIndex = room.players.length > 0 ? room.turnIndex % room.players.length : 0;
+
+  // Nếu không phải người đang vẽ, im lặng bỏ qua (chống lỗi 403 khi hết giờ)
+  if (room.status !== 'playing' || currentDrawerIndex !== playerIndex) {
     return roomView(room, playerIndex, now);
   }
 
   if (input.revision >= room.drawingRevision) {
     room.drawingRevision = input.revision;
-    // Không giới hạn số nét hay số điểm
     room.drawingStrokes = input.strokes.map((stroke) => ({
       points: stroke.points.map((point) => ({ ...point })),
       color: stroke.color,

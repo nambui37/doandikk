@@ -53,6 +53,7 @@ export async function apiActOnRoom(
   roomCode: string,
   token: string,
   action: RoomAction,
+  targetGuesserIndex?: number,
 ): Promise<RoomView> {
   const res = await fetch(`${API_BASE}/rooms/${encodeURIComponent(roomCode)}/actions`, {
     method: 'POST',
@@ -60,7 +61,7 @@ export async function apiActOnRoom(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ action }),
+    body: JSON.stringify({ action, targetGuesserIndex }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

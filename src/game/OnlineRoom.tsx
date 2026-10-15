@@ -4,22 +4,21 @@ import {
   Check,
   Clock3,
   Copy,
+  Crown,
   LoaderCircle,
   Pause,
   RotateCcw,
   Share2,
+  Users,
   Wifi,
-  WifiOff,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type {
-  DrawingPoint,
   DrawingStroke,
   RoomAction,
   RoomSession,
   RoomView,
 } from './types';
-import type { GameConfig } from './SetupScreen';
 import OnlineDrawing from './OnlineDrawing';
 import ResultsScreen from './ResultsScreen';
 import {
@@ -73,7 +72,6 @@ export default function OnlineRoom({ session, onExit }: Props) {
         } else if (msg.type === 'STATE_SYNC') {
           setView(msg.view);
         } else if (msg.type === 'REQUEST_ACTION' && isHost) {
-          // Host xử lý hành động được yêu cầu
           handleAction(msg.action);
         }
       },
@@ -87,7 +85,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
     };
   }, [roomCode, isHost]);
 
-  // Polling đồng bộ định kỳ từ Server (nhẹ nhàng, 1.2s - 1.8s)
+  // Polling đồng bộ từ Server (1.3s)
   useEffect(() => {
     let timerId: any = null;
     let isCancelled = false;
@@ -99,7 +97,6 @@ export default function OnlineRoom({ session, onExit }: Props) {
           setView(nextView);
           drawingRevision.current = Math.max(drawingRevision.current, nextView.drawingRevision);
 
-          // Nếu là host và P2P mở, broadcast state sang bạn bè
           if (isHost && p2pManagerRef.current?.isConnected) {
             p2pManagerRef.current.send({ type: 'STATE_SYNC', view: nextView });
           }
@@ -110,8 +107,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
         }
       } finally {
         if (!isCancelled) {
-          // Tần suất đồng bộ ổn định
-          timerId = setTimeout(poll, 1400);
+          timerId = setTimeout(poll, 1300);
         }
       }
     };
@@ -125,19 +121,18 @@ export default function OnlineRoom({ session, onExit }: Props) {
   }, [roomCode, playerToken, isHost]);
 
   const handleAction = useCallback(
-    async (action: RoomAction) => {
+    async (action: RoomAction, targetGuesserIndex?: number) => {
       setIsSubmitting(true);
       setActionError(null);
       try {
         if (action === 'correct') {
-          // Hiệu ứng pháo hoa chúc mừng
           confetti({
-            particleCount: 50,
-            spread: 60,
+            particleCount: 55,
+            spread: 65,
             origin: { y: 0.6 },
           });
         }
-        const updatedView = await apiActOnRoom(roomCode, playerToken, action);
+        const updatedView = await apiActOnRoom(roomCode, playerToken, action, targetGuesserIndex);
         setView(updatedView);
         drawingRevision.current = Math.max(drawingRevision.current, updatedView.drawingRevision);
 
@@ -164,7 +159,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
         drawingStrokes: strokes,
       }));
 
-      // 1. Gửi qua P2P tức thì nếu có
+      // Broadcast qua P2P
       if (p2pManagerRef.current?.isConnected) {
         const latest = strokes[strokes.length - 1];
         if (latest) {
@@ -181,11 +176,11 @@ export default function OnlineRoom({ session, onExit }: Props) {
         }
       }
 
-      // 2. Gửi lên Server để lưu trạng thái
+      // Lưu lên Server
       try {
         await apiUpdateRoomDrawing(roomCode, playerToken, { revision: rev, strokes });
       } catch {
-        // im lặng bỏ qua nếu do trôi lượt
+        // ignore
       }
     },
     [roomCode, playerToken],
@@ -221,22 +216,11 @@ export default function OnlineRoom({ session, onExit }: Props) {
     }
   };
 
-  const names = [
-    view.players.find((p) => p.index === 0)?.name || 'Người chơi 1',
-    view.players.find((p) => p.index === 1)?.name || 'Đang chờ…',
-  ] as [string, string];
-
-  const config: GameConfig = {
-    players: names,
-    category: view.category,
-    mode: view.mode,
-  };
-
-  const giverIndex = view.turnIndex % 2;
-  const guesserIndex = 1 - giverIndex;
-  const localIsGiver = session.playerIndex === giverIndex;
+  const drawerIndex = view.drawerIndex ?? (view.turnIndex % Math.max(1, view.players.length));
+  const currentDrawer = view.players[drawerIndex];
+  const localIsDrawer = session.playerIndex === drawerIndex;
   const localPlayer = view.players.find((p) => p.index === session.playerIndex);
-  const hasGuest = view.players.some((p) => p.index === 1);
+  const otherGuessers = view.players.filter((p) => p.index !== drawerIndex);
 
   // MÀN HÌNH TỔNG KẾT
   if (view.status === 'results') {
@@ -245,75 +229,85 @@ export default function OnlineRoom({ session, onExit }: Props) {
         <div className="room-topline">
           <span>Mã phòng · {roomCode}</span>
           <span className="connection-state">
-            <span className="live-dot" /> Đã kết thúc
+            <span className="live-dot" /> Trận đấu kết thúc
           </span>
         </div>
         <ResultsScreen
-          config={config}
-          scores={[view.scores[0] ?? 0, view.scores[1] ?? 0]}
+          players={view.players}
+          scores={view.scores}
           onSetup={onExit}
           onAgain={() => handleAction('restart')}
         />
         <p className="online-result-note" style={{ textAlign: 'center', marginTop: 16 }}>
-          Kết quả trận đấu đã được đồng bộ hoàn toàn giữa hai bạn.
+          Cảm ơn tất cả mọi người đã tham gia vẽ tranh và đoán từ!
         </p>
       </div>
     );
   }
 
-  // MÀN HÌNH CHỜ (LOBBY)
+  // MÀN HÌNH CHỜ (LOBBY NHIỀU NGƯỜI CHƠI)
   if (view.status === 'waiting' || view.status === 'ready') {
     return (
       <main className="screen">
         <section className="online-panel room-shell fade-in">
           <div className="room-topline">
-            <span>Phòng chơi trực tuyến</span>
+            <span>Phòng vẽ trực tuyến ({view.players.length}/8 người)</span>
             <span className="connection-state">
               <span className={`live-dot ${p2pActive ? 'p2p' : ''}`} />
-              {p2pActive ? 'Kết nối trực tiếp P2P (Siêu tốc)' : 'Đã kết nối máy chủ'}
+              {p2pActive ? 'P2P Trực tiếp (Siêu mượt)' : 'Đã kết nối máy chủ'}
             </span>
           </div>
 
-          <div className="eyebrow">Đưa bạn bè vào cuộc</div>
-          <h1 style={{ fontSize: 'clamp(32px, 6vw, 48px)', letterSpacing: '-.05em', margin: '12px 0 0' }}>
-            Bàn chơi đã mở.
+          <div className="eyebrow">Mời bạn bè cùng vào cuộc</div>
+          <h1 style={{ fontSize: 'clamp(30px, 5.5vw, 44px)', letterSpacing: '-.05em', margin: '12px 0 0' }}>
+            Phòng chơi đã sẵn sàng.
           </h1>
 
           <div className="room-code-panel">
-            <div className="field-label">Mã phòng · gửi mã hoặc link cho bạn bè</div>
+            <div className="field-label">Mã phòng · gửi mã hoặc link cho nhóm bạn</div>
             <div className="room-code">{roomCode}</div>
             <div className="share-buttons-row">
               <button type="button" className="copy-btn" onClick={copyCode}>
                 {copied ? <><Check size={14} color="#55d3bf" /> Đã chép mã!</> : <><Copy size={14} /> Chép mã phòng</>}
               </button>
               <button type="button" className="copy-btn link-btn" onClick={copyInviteLink}>
-                {copiedLink ? <><Check size={14} color="#55d3bf" /> Đã chép link!</> : <><Share2 size={14} /> Chép link mời</>}
+                {copiedLink ? <><Check size={14} color="#55d3bf" /> Đã chép link!</> : <><Share2 size={14} /> Chép link mời bạn</>}
               </button>
             </div>
-            <p>Bạn bè chỉ cần nhấn link là vào phòng ngay lập tức!</p>
+            <p>Hỗ trợ từ 2 đến 8 người chơi cùng lúc! Nhấn link để vào phòng ngay.</p>
           </div>
 
-          <div className="room-players">
-            <div className="room-player">
-              <small>Người tạo phòng</small>
-              <strong>{names[0]}</strong>
+          {/* DANH SÁCH TẤT CẢ NGƯỜI CHƠI TRONG PHÒNG */}
+          <div className="multiplayer-lobby-list">
+            <div className="field-label" style={{ marginBottom: 10 }}>
+              <Users size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 5 }} />
+              Danh sách người chơi ({view.players.length} người)
             </div>
-            {hasGuest ? (
-              <div className="room-player">
-                <small>Đã tham gia</small>
-                <strong>{names[1]}</strong>
-              </div>
-            ) : (
-              <div className="room-player waiting">
-                <small>Người chơi 2</small>
-                <strong>Đang chờ bạn bè vào…</strong>
-              </div>
-            )}
+            <div className="players-grid">
+              {view.players.map((p) => (
+                <div key={p.index} className={`player-card-chip ${p.isHost ? 'host' : ''}`}>
+                  <div className="player-chip-top">
+                    {p.isHost && (
+                      <span className="host-badge" title="Chủ phòng">
+                        <Crown size={12} /> Chủ phòng
+                      </span>
+                    )}
+                    <span className="online-dot-mini" title="Đang online" />
+                  </div>
+                  <strong className="player-chip-name">{p.name}</strong>
+                  <small>{p.index === session.playerIndex ? '(Bạn)' : 'Đã sẵn sàng'}</small>
+                </div>
+              ))}
+              {view.players.length < 8 && (
+                <div className="player-card-chip waiting-chip">
+                  <small>Đang đợi thêm bạn bè tham gia…</small>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="room-message">
-            <Wifi /> Chủ đề: <strong>{view.category}</strong> · Cách chơi:{' '}
-            <strong>{view.mode === 'talk' ? 'Nói gợi ý' : 'Vẽ gợi ý'}</strong> · 4 lượt đấu.
+          <div className="room-message" style={{ marginTop: 14 }}>
+            <Wifi /> Chủ đề: <strong>{view.category}</strong> · Chế độ <strong>VẼ TRANH ĐOÁN Ý</strong> · Thay phiên nhau vẽ.
           </div>
 
           {actionError && <div className="online-error" role="alert">{actionError}</div>}
@@ -322,22 +316,25 @@ export default function OnlineRoom({ session, onExit }: Props) {
             <button
               type="button"
               className="primary-btn full-btn"
-              disabled={!hasGuest || isSubmitting}
+              disabled={view.players.length < 2 || isSubmitting}
               onClick={() => handleAction('start')}
+              style={{ marginTop: 14 }}
             >
               {isSubmitting ? (
                 <><LoaderCircle className="spin" /> Đang vào ván…</>
+              ) : view.players.length < 2 ? (
+                <>Đang đợi ít nhất 2 người để bắt đầu…</>
               ) : (
-                <>Bắt đầu ván chơi <ArrowRight /></>
+                <>Bắt đầu ván chơi ({view.players.length} người) <ArrowRight /></>
               )}
             </button>
           ) : (
-            <div className="room-message" style={{ justifyContent: 'center' }}>
-              <LoaderCircle className="spin" /> Đã sẵn sàng. Chờ chủ phòng bấm bắt đầu…
+            <div className="room-message" style={{ justifyContent: 'center', marginTop: 14 }}>
+              <LoaderCircle className="spin" /> Đã sẵn sàng. Đang chờ chủ phòng bấm bắt đầu ván…
             </div>
           )}
 
-          <button type="button" className="online-back" onClick={onExit} style={{ marginTop: 12 }}>
+          <button type="button" className="online-back" onClick={onExit} style={{ marginTop: 10 }}>
             Thoát phòng về màn hình đầu
           </button>
         </section>
@@ -347,13 +344,13 @@ export default function OnlineRoom({ session, onExit }: Props) {
 
   // MÀN HÌNH ĐANG CHƠI (PLAYING / PAUSED)
   const progress = Math.max(0, Math.min(100, (view.timeLeftSeconds / 60) * 100));
-  const canControl = localIsGiver && view.status === 'playing';
+  const canControl = localIsDrawer && view.status === 'playing';
 
   return (
     <main className="online-playing">
       <div className="room-topline">
         <span>
-          Lượt {view.turnIndex + 1} / 4 · {view.mode === 'talk' ? 'NÓI GỢI Ý' : 'VẼ GỢI Ý'} · {view.category}
+          Lượt {view.turnIndex + 1} / {view.totalTurns} · VẼ TRANH · {view.category}
         </span>
         <span className="connection-state">
           <span className={`live-dot ${p2pActive ? 'p2p' : ''}`} />
@@ -361,28 +358,33 @@ export default function OnlineRoom({ session, onExit }: Props) {
         </span>
       </div>
 
+      {/* SCOREBOARD CHO TẤT CẢ NGƯỜI CHƠI */}
       <header className="game-header">
         <div className="round-info">
-          Phòng <strong>{roomCode}</strong> · Bạn là <strong>{localPlayer?.name || names[session.playerIndex]}</strong>
+          Phòng <strong>{roomCode}</strong> · Bạn là <strong>{localPlayer?.name || `Người chơi ${session.playerIndex + 1}`}</strong>
         </div>
-        <div className="scoreboard">
-          {names.map((player, index) => (
+        <div className="scoreboard scoreboard-multi">
+          {view.players.map((player) => (
             <div
-              key={index}
-              className={`score-chip ${index === guesserIndex ? 'active-turn' : ''}`}
+              key={player.index}
+              className={`score-chip ${player.index === drawerIndex ? 'drawer-turn' : ''}`}
             >
-              <span>{player}</span>
-              <b>{view.scores[index] ?? 0} đ</b>
+              <span className="chip-player-name">
+                {player.index === drawerIndex && '✏️ '}
+                {player.name}
+              </span>
+              <b>{view.scores[player.index] ?? 0} đ</b>
             </div>
           ))}
         </div>
       </header>
 
-      <div className={`online-role-banner ${localIsGiver ? '' : 'guesser'}`}>
+      {/* BANNER BÁO VAI TRÒ */}
+      <div className={`online-role-banner ${localIsDrawer ? '' : 'guesser'}`}>
         <Wifi size={16} />{' '}
-        {localIsGiver
-          ? `Bạn đang ra gợi ý cho ${names[guesserIndex]}.`
-          : `${names[giverIndex]} đang gợi ý — bạn hãy đoán thật nhanh!`}
+        {localIsDrawer
+          ? `Bạn đang vẽ từ bí mật! Tất cả bạn bè đang chăm chú nhìn và đoán.`
+          : `${currentDrawer?.name || 'Bạn'} đang vẽ — Hãy đoán thật to đáp án!`}
       </div>
 
       <div className="game-grid">
@@ -390,8 +392,8 @@ export default function OnlineRoom({ session, onExit }: Props) {
           <div className="turn-top">
             <div className="role-pill">
               <span>
-                <strong>{names[giverIndex]}</strong> ra hiệu{' '}
-                <span style={{ color: '#71798f' }}>→</span> <strong>{names[guesserIndex]}</strong> đoán
+                <strong>{currentDrawer?.name}</strong> vẽ tranh{' '}
+                <span style={{ color: '#71798f' }}>→</span> Các bạn còn lại cùng đoán!
               </span>
             </div>
             <div className="turn-actions">
@@ -432,7 +434,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
               </div>
               <div className="timer-label">
                 <Clock3 style={{ width: 12, verticalAlign: '-2px', marginRight: 5 }} />
-                Thời gian còn lại
+                Thời gian lượt vẽ
               </div>
             </div>
             <div className="meter" aria-label={`Còn ${view.timeLeftSeconds} giây`}>
@@ -440,63 +442,96 @@ export default function OnlineRoom({ session, onExit }: Props) {
             </div>
           </div>
 
-          {localIsGiver && view.currentPrompt ? (
+          {localIsDrawer && view.currentPrompt ? (
             <div className="prompt-card">
-              <div className="prompt-label">Từ bí mật · Chỉ bạn nhìn thấy</div>
+              <div className="prompt-label">Từ khóa bí mật cần vẽ · Chỉ bạn nhìn thấy</div>
               <div className="prompt-word">{view.currentPrompt}</div>
             </div>
           ) : (
             <div className="prompt-card">
               <div className="prompt-label">Từ bí mật</div>
-              <div className="prompt-word" style={{ fontSize: 'clamp(20px, 4vw, 28px)', color: '#aeb4c5' }}>
-                Đang chờ gợi ý từ {names[giverIndex]}…
+              <div className="prompt-word" style={{ fontSize: 'clamp(20px, 4vw, 26px)', color: '#aeb4c5' }}>
+                Đang chờ nét vẽ gợi ý từ {currentDrawer?.name}…
               </div>
             </div>
           )}
 
-          {view.mode === 'draw' && (
-            <OnlineDrawing
-              strokes={view.drawingStrokes}
-              revision={view.drawingRevision}
-              canDraw={canControl}
-              onChange={handleDrawingChange}
-              onClearDrawing={handleClearDrawing}
-            />
-          )}
+          {/* BẢNG VẼ ONLINE SIÊU MƯỢT */}
+          <OnlineDrawing
+            strokes={view.drawingStrokes}
+            revision={view.drawingRevision}
+            canDraw={canControl}
+            onChange={handleDrawingChange}
+            onClearDrawing={handleClearDrawing}
+          />
 
           <p className="play-instruction">
-            {localIsGiver
-              ? view.mode === 'talk'
-                ? 'Hãy dùng lời nói để diễn tả (không nói từ khóa). Xác nhận ngay khi bạn đoán đúng!'
-                : 'Vẽ gợi ý lên bảng. Nét vẽ truyền trực tiếp sang màn hình của bạn bè!'
-              : 'Hãy chú ý gợi ý trên bảng và đoán to thành tiếng. Người ra gợi ý sẽ bấm xác nhận khi bạn đoán trúng!'}
+            {localIsDrawer
+              ? 'Vẽ nhanh hình gợi ý lên bảng. Nét vẽ lập tức hiện trên màn hình của tất cả bạn bè!'
+              : 'Hãy nhìn hình vẽ và đoán to thành tiếng. Người vẽ sẽ bấm nút xác nhận cho bạn khi bạn đoán đúng!'}
           </p>
 
+          {/* HÀNH ĐỘNG CỦA NGƯỜI VẼ */}
           {canControl ? (
-            <div className="play-actions">
-              <button
-                type="button"
-                className="primary-btn"
-                disabled={isSubmitting}
-                onClick={() => handleAction('correct')}
-              >
-                <Check /> Đoán đúng rồi! (+{100 + view.timeLeftSeconds * 20}đ)
-              </button>
-              <button
-                type="button"
-                className="pass-btn"
-                disabled={isSubmitting}
-                onClick={() => handleAction('pass')}
-              >
-                Bỏ qua từ này
-              </button>
+            <div className="drawer-actions-container">
+              {otherGuessers.length > 1 ? (
+                <div className="guesser-award-box">
+                  <span className="award-title">Bấm vào người vừa đoán đúng:</span>
+                  <div className="award-buttons-row">
+                    {otherGuessers.map((guesser) => (
+                      <button
+                        key={guesser.index}
+                        type="button"
+                        className="award-guesser-btn"
+                        disabled={isSubmitting}
+                        onClick={() => handleAction('correct', guesser.index)}
+                      >
+                        <Check size={14} /> {guesser.name} (+{100 + view.timeLeftSeconds * 20}đ)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="play-actions">
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    disabled={isSubmitting}
+                    onClick={() => handleAction('correct')}
+                  >
+                    <Check /> Đoán đúng rồi! (+{100 + view.timeLeftSeconds * 20}đ)
+                  </button>
+                  <button
+                    type="button"
+                    className="pass-btn"
+                    disabled={isSubmitting}
+                    onClick={() => handleAction('pass')}
+                  >
+                    Bỏ qua từ này
+                  </button>
+                </div>
+              )}
+
+              {otherGuessers.length > 1 && (
+                <div style={{ marginTop: 8, textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    className="pass-btn"
+                    style={{ padding: '8px 16px', fontSize: 12 }}
+                    disabled={isSubmitting}
+                    onClick={() => handleAction('pass')}
+                  >
+                    Bỏ qua từ này
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="room-message" style={{ justifyContent: 'center' }}>
               <LoaderCircle className="spin" />{' '}
               {view.status === 'paused'
                 ? 'Ván chơi đang tạm dừng.'
-                : 'Hãy đoán thật nhanh! Người gợi ý sẽ xác nhận khi bạn nói đúng.'}
+                : 'Hãy đoán thật nhanh! Người vẽ sẽ bấm xác nhận khi bạn đoán trúng.'}
             </div>
           )}
 
@@ -507,24 +542,27 @@ export default function OnlineRoom({ session, onExit }: Props) {
           <section className="side-card">
             <h3>Lượt hiện tại</h3>
             <div className="role-row">
-              <span>Ra gợi ý</span>
-              <b>{names[giverIndex]}</b>
+              <span>Đang vẽ ✏️</span>
+              <b style={{ color: '#f7d55c' }}>{currentDrawer?.name}</b>
             </div>
             <div className="role-row">
-              <span>Đoán từ</span>
-              <b>{names[guesserIndex]}</b>
-            </div>
-            <div className="role-row">
-              <span>Đã đúng lượt này</span>
-              <b style={{ color: '#f7d55c', fontSize: 18 }}>{view.correctThisTurn} từ</b>
+              <span>Đã đoán đúng</span>
+              <b style={{ color: '#55d3bf', fontSize: 18 }}>{view.correctThisTurn} từ</b>
             </div>
           </section>
 
           <section className="side-card">
-            <h3>Điểm thưởng tốc độ</h3>
-            <div className="points-note">
-              <strong>100 điểm + 20 × giây còn lại</strong>
-              Mỗi đáp án đúng sẽ cộng điểm trực tiếp cho người đoán!
+            <h3>Bảng điểm cuộc chơi</h3>
+            <div className="player-rankings-mini">
+              {[...view.players]
+                .sort((a, b) => (view.scores[b.index] || 0) - (view.scores[a.index] || 0))
+                .map((p, rank) => (
+                  <div key={p.index} className="ranking-row">
+                    <span className="rank-num">#{rank + 1}</span>
+                    <span className="rank-name">{p.name}</span>
+                    <strong className="rank-score">{view.scores[p.index] || 0} đ</strong>
+                  </div>
+                ))}
             </div>
           </section>
         </aside>
@@ -534,8 +572,8 @@ export default function OnlineRoom({ session, onExit }: Props) {
         <div className="pause-overlay" role="dialog" aria-modal="true">
           <div className="pause-card">
             <div className="eyebrow" style={{ justifyContent: 'center' }}>Đồng hồ đã dừng</div>
-            <h2>Nghỉ giải lao.</h2>
-            <p>Ván chơi đang tạm dừng trên cả hai thiết bị.</p>
+            <h2>Nghỉ một nhịp.</h2>
+            <p>Ván chơi đang tạm dừng trên thiết bị của mọi người.</p>
             <button
               type="button"
               className="primary-btn"
