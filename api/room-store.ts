@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { wordBank } from '../src/game/words';
+import { wordBank } from './word-bank';
 
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'paused' | 'results';
 export type RoomAction = 'start' | 'correct' | 'pass' | 'pause' | 'resume' | 'restart';

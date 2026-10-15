@@ -4,6 +4,14 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/rooms/(.*)",
+      "destination": "/api/rooms"
+    },
+    {
+      "source": "/api/rooms",
+      "destination": "/api/rooms"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     }

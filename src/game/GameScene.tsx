@@ -56,13 +56,15 @@ function supportsWebGL() {
 function SceneObjects() {
   const spinner = useRef<Mesh>(null);
   const puck = useRef<Mesh>(null);
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
+  const timeRef = useRef(0);
+  useFrame((_, delta) => {
+    timeRef.current += Math.min(delta, 0.1);
+    const t = timeRef.current;
     if (spinner.current) {
-      spinner.current.rotation.y = t * .36;
-      spinner.current.rotation.x = Math.sin(t * .4) * .12;
+      spinner.current.rotation.y = t * 0.36;
+      spinner.current.rotation.x = Math.sin(t * 0.4) * 0.12;
     }
-    if (puck.current) puck.current.rotation.y = -t * .24;
+    if (puck.current) puck.current.rotation.y = -t * 0.24;
   });
   return (
     <>

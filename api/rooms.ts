@@ -8,6 +8,7 @@ import {
 } from './room-store';
 
 export default async function handler(req: any, res: any) {
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -17,6 +18,7 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // Parse body an toàn
   let body = req.body;
   if (typeof body === 'string') {
     try {
@@ -25,32 +27,47 @@ export default async function handler(req: any, res: any) {
       body = {};
     }
   }
+  if (!body || typeof body !== 'object') {
+    body = {};
+  }
 
   const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
   const tokenMatch = typeof authHeader === 'string' ? authHeader.match(/^Bearer\s+(.+)$/i) : null;
   const token = tokenMatch ? tokenMatch[1] : undefined;
 
-  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
-  const pathParts = url.pathname.replace(/^\/api\/rooms\/?/, '').split('/').filter(Boolean);
+  // Xử lý path an toàn trên cả Vercel lẫn Local
+  const rawUrl = req.url || '/';
+  const cleanPath = rawUrl.split('?')[0];
+  const pathParts = cleanPath
+    .replace(/^\/api\/rooms\/?/, '')
+    .replace(/^\/rooms\/?/, '')
+    .split('/')
+    .filter(Boolean);
 
   try {
-    // 1. POST /api/rooms - Tạo phòng
-    if (req.method === 'POST' && pathParts.length === 0) {
-      const { playerName, category } = body || {};
-      if (!playerName || typeof playerName !== 'string' || !playerName.trim()) {
-        res.status(400).json({ error: 'Vui lòng nhập tên người chơi.' });
+    // 1. Khi truy cập vào /api/rooms gốc
+    if (pathParts.length === 0) {
+      if (req.method === 'POST') {
+        const playerName = (body.playerName || '').trim();
+        if (!playerName) {
+          res.status(400).json({ error: 'Vui lòng nhập tên người chơi.' });
+          return;
+        }
+        const session = createRoom({
+          playerName,
+          category: body.category || 'Đời thường',
+        });
+        res.status(201).json(session);
         return;
       }
-      const session = createRoom({
-        playerName: playerName.trim(),
-        category: category || 'Đời thường',
-      });
-      res.status(201).json(session);
+
+      // GET /api/rooms trả về 200 OK
+      res.status(200).json({ status: 'ok', message: 'API Hai Bộ Óc Một Ý đang hoạt động tốt.' });
       return;
     }
 
     const roomCode = (pathParts[0] || (req.query && req.query.roomCode) || '').toUpperCase();
-    const actionOrSub = pathParts[1];
+    const subAction = pathParts[1];
 
     if (!roomCode) {
       res.status(400).json({ error: 'Mã phòng không hợp lệ.' });
@@ -58,43 +75,41 @@ export default async function handler(req: any, res: any) {
     }
 
     // 2. POST /api/rooms/:roomCode/join - Vào phòng
-    if (req.method === 'POST' && actionOrSub === 'join') {
-      const { playerName } = body || {};
-      if (!playerName || typeof playerName !== 'string' || !playerName.trim()) {
+    if (req.method === 'POST' && subAction === 'join') {
+      const playerName = (body.playerName || '').trim();
+      if (!playerName) {
         res.status(400).json({ error: 'Vui lòng nhập tên trước khi vào phòng.' });
         return;
       }
-      const session = joinRoom(roomCode, playerName.trim());
+      const session = joinRoom(roomCode, playerName);
       res.status(200).json(session);
       return;
     }
 
     // 3. GET /api/rooms/:roomCode - Lấy trạng thái phòng
-    if (req.method === 'GET' && !actionOrSub) {
+    if (req.method === 'GET' && !subAction) {
       const view = getRoomViewForToken(roomCode, token);
       res.status(200).json(view);
       return;
     }
 
-    // 4. POST /api/rooms/:roomCode/actions - Hành động
-    if (req.method === 'POST' && actionOrSub === 'actions') {
-      const { action, targetGuesserIndex } = body || {};
+    // 4. POST /api/rooms/:roomCode/actions - Hành động ván chơi
+    if (req.method === 'POST' && subAction === 'actions') {
+      const action = body.action;
       if (!action) {
-        res.status(400).json({ error: 'Thiếu hành động (action).' });
+        res.status(400).json({ error: 'Thiếu trường hành động (action).' });
         return;
       }
-      const view = performRoomAction(roomCode, token, action, targetGuesserIndex);
+      const view = performRoomAction(roomCode, token, action, body.targetGuesserIndex);
       res.status(200).json(view);
       return;
     }
 
     // 5. PUT /api/rooms/:roomCode/drawing - Bảng vẽ
-    if (req.method === 'PUT' && actionOrSub === 'drawing') {
-      const { revision, strokes } = body || {};
-      const view = updateRoomDrawing(roomCode, token, {
-        revision: typeof revision === 'number' ? revision : 0,
-        strokes: Array.isArray(strokes) ? strokes : [],
-      });
+    if (req.method === 'PUT' && subAction === 'drawing') {
+      const revision = typeof body.revision === 'number' ? body.revision : 0;
+      const strokes = Array.isArray(body.strokes) ? body.strokes : [];
+      const view = updateRoomDrawing(roomCode, token, { revision, strokes });
       res.status(200).json(view);
       return;
     }
@@ -106,6 +121,6 @@ export default async function handler(req: any, res: any) {
       return;
     }
     console.error('Room API Error:', error);
-    res.status(500).json({ error: error?.message || 'Lỗi máy chủ nội bộ.' });
+    res.status(500).json({ error: error?.message || 'Lỗi xử lý API nội bộ.' });
   }
 }
