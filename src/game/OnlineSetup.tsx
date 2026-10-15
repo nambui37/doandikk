@@ -10,6 +10,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { AVATAR_LIST } from './Avatars';
+import Avatar3D from './Avatar3D';
 import type { GameMode, RoomCreateInput, RoomJoinInput, RoomSession } from './types';
 import { apiCreateRoom, apiJoinRoom, warmUpServer } from '../lib/api';
 
@@ -61,6 +62,7 @@ export default function OnlineSetup({ onSession }: Props) {
   const [slowNotice, setSlowNotice] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
 
   // Đánh thức server Render ngầm
   useEffect(() => {
@@ -79,7 +81,9 @@ export default function OnlineSetup({ onSession }: Props) {
   const currentAvatar = AVATAR_LIST[avatarIndex] || AVATAR_LIST[0];
 
   const handleRandomAvatar = () => {
+    setIsSpinning(true);
     setAvatarIndex((prev) => (prev + 1) % AVATAR_LIST.length);
+    setTimeout(() => setIsSpinning(false), 600);
   };
 
   // BƯỚC 1: BẤM "BẮT ĐẦU" TỪ MÀN HÌNH CHÍNH
@@ -220,17 +224,17 @@ export default function OnlineSetup({ onSession }: Props) {
                 <div className="gartic-big-avatar-box">
                   <div
                     className="avatar-circle-core"
-                    style={{ backgroundColor: currentAvatar.bg }}
+                    style={{ backgroundColor: currentAvatar.bg, overflow: 'hidden' }}
                     onClick={handleRandomAvatar}
-                    title="Bấm để đổi avatar ngẫu nhiên"
+                    title="Bấm để đổi avatar 3D ngẫu nhiên"
                   >
-                    {currentAvatar.render(130)}
+                    <Avatar3D avatarIndex={avatarIndex} isSpinning={isSpinning} />
                   </div>
                   <button
                     type="button"
                     className="avatar-refresh-circle-btn"
                     onClick={handleRandomAvatar}
-                    title="Đổi avatar ngẫu nhiên"
+                    title="Đổi avatar 3D ngẫu nhiên"
                   >
                     <RotateCw size={19} />
                   </button>
@@ -244,7 +248,7 @@ export default function OnlineSetup({ onSession }: Props) {
                   <input
                     type="text"
                     maxLength={18}
-                    placeholder="namm"
+                    placeholder="Nhập biệt danh của bạn..."
                     value={name}
                     onChange={(e) => {
                       setName(e.target.value);

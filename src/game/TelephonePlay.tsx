@@ -14,6 +14,7 @@ import confetti from 'canvas-confetti';
 import type { DrawingStroke, TelephoneState } from './types';
 import OnlineDrawing from './OnlineDrawing';
 import StrokeViewer from './StrokeViewer';
+import Hourglass3D from './Hourglass3D';
 import { getRandomPrompt } from './telephonePrompts';
 
 interface Props {
@@ -107,10 +108,10 @@ export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
           </span>
         </div>
 
-        {/* ĐỒNG HỒ ĐẾM NGƯỢC */}
-        <div className="topbar-timer-wrapper">
+        {/* ĐỒNG HỒ CÁT 3D STUDIO & ĐẾM NGƯỢC */}
+        <div className="topbar-timer-wrapper" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Hourglass3D timeLeft={state.timeLeftSeconds} totalTime={75} />
           <div className={`gartic-timer-pill ${state.timeLeftSeconds <= 10 ? 'urgent' : ''}`}>
-            <Clock3 size={18} className="timer-icon" />
             <span className="timer-number">{state.timeLeftSeconds}s</span>
           </div>
         </div>

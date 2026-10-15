@@ -26,6 +26,7 @@ import OnlineDrawing from './OnlineDrawing';
 import ResultsScreen from './ResultsScreen';
 import TelephonePlay from './TelephonePlay';
 import TelephoneAlbum from './TelephoneAlbum';
+import Hourglass3D from './Hourglass3D';
 import { AVATAR_LIST } from './Avatars';
 import {
   apiActOnRoom,
@@ -600,13 +601,15 @@ export default function OnlineRoom({ session, onExit }: Props) {
           <span className="target-pill">Mục tiêu: {view.targetScore}đ</span>
         </div>
 
-        {/* ĐỒNG HỒ ĐẾM NGƯỢC NỔI BẬT */}
+        {/* ĐỒNG HỒ CÁT 3D STUDIO & ĐẾM NGƯỢC */}
         <div className={`gartic-timer-box ${isGuessingPhase || view.phaseTimeLeftSeconds <= 10 ? 'danger-pulse' : ''}`}>
-          <Clock3 size={18} />
-          <span className="timer-text">00:{String(view.phaseTimeLeftSeconds).padStart(2, '0')}</span>
-          <small className="timer-desc">
-            {isDrawingPhase ? '60s Vẽ' : isGuessingPhase ? '20s Đoán' : 'Công bố'}
-          </small>
+          <Hourglass3D timeLeft={view.phaseTimeLeftSeconds} totalTime={maxPhaseTime} />
+          <div className="timer-text-wrap" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span className="timer-text">00:{String(view.phaseTimeLeftSeconds).padStart(2, '0')}</span>
+            <small className="timer-desc">
+              {isDrawingPhase ? '60s Vẽ' : isGuessingPhase ? '20s Đoán' : 'Công bố'}
+            </small>
+          </div>
         </div>
 
         {/* NÚT RỜI PHÒNG LUÔN CÓ MẶT */}

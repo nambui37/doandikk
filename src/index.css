@@ -1374,19 +1374,36 @@ h1,h2,h3,p { margin-top:0; }
 .gartic-timer-box {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border-radius: 14px;
+  gap: 10px;
+  padding: 2px 14px;
+  border-radius: 16px;
   background: rgba(247, 213, 92, 0.15);
   border: 2px solid #f7d55c;
   color: #f7d55c;
   font-weight: 900;
+  position: relative;
 }
 .gartic-timer-box.danger-pulse {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.25);
   border-color: #ef4444;
   color: #ff6b6b;
-  animation: pulse-danger 1.2s infinite;
+  animation: pulse-danger 1s infinite alternate;
+}
+.hourglass-3d-wrap {
+  width: 54px !important;
+  height: 48px !important;
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.hourglass-3d-wrap.is-emergency-glow {
+  filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.8));
+  animation: hourglass-alarm-pulse 0.5s infinite alternate;
+}
+@keyframes hourglass-alarm-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
 }
 .timer-text {
   font-size: 18px;
