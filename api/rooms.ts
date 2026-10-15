@@ -55,7 +55,7 @@ export default async function handler(req: any, res: any) {
         }
         const session = createRoom({
           playerName,
-          category: body.category || 'Đời thường',
+          category: body.category || 'Đồ vật & Đời thường',
         });
         res.status(201).json(session);
         return;

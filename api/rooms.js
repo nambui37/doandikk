@@ -449,7 +449,8 @@ if (!globalStore.__HBOMY_ROOMS__) {
 }
 var rooms = globalStore.__HBOMY_ROOMS__;
 function shuffled(items) {
-  const result = [...items];
+  const safeItems = Array.isArray(items) && items.length > 0 ? items : Object.values(wordBank)[0] || [];
+  const result = [...safeItems];
   for (let index = result.length - 1; index > 0; index -= 1) {
     const target = randomBytes(4).readUInt32BE(0) % (index + 1);
     [result[index], result[target]] = [result[target], result[index]];
@@ -559,7 +560,7 @@ function createRoom(input) {
   const room = {
     code,
     players: [{ name: input.playerName, token, lastSeenAt: now }],
-    category: input.category || "\u0110\u1EDDi th\u01B0\u1EDDng",
+    category: input.category && wordBank[input.category] ? input.category : Object.keys(wordBank)[0],
     status: "waiting",
     turnIndex: 0,
     totalTurns: 4,
@@ -569,7 +570,7 @@ function createRoom(input) {
     scores: [0],
     correctThisTurn: 0,
     wordIndex: 0,
-    words: shuffled(wordBank[input.category] ?? wordBank["\u0110\u1EDDi th\u01B0\u1EDDng"]),
+    words: shuffled(input.category && wordBank[input.category] ? wordBank[input.category] : Object.values(wordBank)[0]),
     drawingRevision: 0,
     drawingStrokes: [],
     lastActivityAt: now
@@ -763,7 +764,7 @@ async function handler(req, res) {
         }
         const session = createRoom({
           playerName,
-          category: body.category || "\u0110\u1EDDi th\u01B0\u1EDDng"
+          category: body.category || "\u0110\u1ED3 v\u1EADt & \u0110\u1EDDi th\u01B0\u1EDDng"
         });
         res.status(201).json(session);
         return;

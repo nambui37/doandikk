@@ -79,8 +79,9 @@ if (!globalStore.__HBOMY_ROOMS__) {
 }
 const rooms = globalStore.__HBOMY_ROOMS__;
 
-function shuffled<T>(items: T[]): T[] {
-  const result = [...items];
+function shuffled<T>(items: T[] | undefined): T[] {
+  const safeItems = Array.isArray(items) && items.length > 0 ? items : Object.values(wordBank)[0] || [];
+  const result = [...safeItems];
   for (let index = result.length - 1; index > 0; index -= 1) {
     const target = randomBytes(4).readUInt32BE(0) % (index + 1);
     [result[index], result[target]] = [result[target], result[index]];
@@ -216,7 +217,7 @@ export function createRoom(input: {
   const room: GameRoom = {
     code,
     players: [{ name: input.playerName, token, lastSeenAt: now }],
-    category: input.category || 'Đời thường',
+    category: (input.category && wordBank[input.category]) ? input.category : Object.keys(wordBank)[0],
     status: 'waiting',
     turnIndex: 0,
     totalTurns: 4, // Mặc định, sẽ cập nhật khi bấm bắt đầu theo số lượng người
@@ -225,7 +226,7 @@ export function createRoom(input: {
     scores: [0],
     correctThisTurn: 0,
     wordIndex: 0,
-    words: shuffled(wordBank[input.category] ?? wordBank['Đời thường']),
+    words: shuffled((input.category && wordBank[input.category]) ? wordBank[input.category] : Object.values(wordBank)[0]),
     drawingRevision: 0,
     drawingStrokes: [],
     lastActivityAt: now,
