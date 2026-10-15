@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:api": "npx esbuild api/rooms.ts --bundle --platform=node --format=esm --outfile=api/rooms.js",
-    "build": "npm run build:api && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "server": "tsx server.js",
     "start": "tsx server.js"
