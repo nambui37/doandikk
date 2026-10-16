@@ -252,8 +252,9 @@ export default function TelephonePlay({ state, roomCode, onSubmit, onDraft }: Pr
 
               <div className="telephone-canvas-container">
                 <OnlineDrawing
+                  key={`telephone-canvas-round-${state.round}`}
                   strokes={currentStrokes}
-                  revision={0}
+                  revision={state.round}
                   canDraw={true}
                   onChange={handleStrokesChange}
                   onDone={(strokes) => handleDrawingSubmit(strokes)}

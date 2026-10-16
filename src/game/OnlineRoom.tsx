@@ -151,7 +151,8 @@ export default function OnlineRoom({ session, onExit }: Props) {
         const nextView = await apiGetRoomState(roomCode, playerToken);
         if (!isCancelled) {
           // Khi chuyển sang lượt vẽ mới (hoặc vòng đấu mới):
-          if (nextView.turnIndex !== prevTurnIndexRef.current) {
+          const isTurnChanged = nextView.turnIndex !== prevTurnIndexRef.current;
+          if (isTurnChanged) {
             prevTurnIndexRef.current = nextView.turnIndex;
             drawingRevision.current = nextView.drawingRevision || 0;
             pendingStrokesRef.current = null;
@@ -159,17 +160,33 @@ export default function OnlineRoom({ session, onExit }: Props) {
             if (drawingDebounceTimer.current) {
               clearTimeout(drawingDebounceTimer.current);
             }
+            if (p2pManagerRef.current?.isConnected) {
+              p2pManagerRef.current.broadcast({
+                type: 'CLEAR_DRAWING',
+                revision: nextView.drawingRevision || 0,
+              });
+            }
           } else {
             drawingRevision.current = Math.max(drawingRevision.current, nextView.drawingRevision);
           }
 
           // Bảo vệ nét vẽ của Drawer và Viewer: không bao giờ để polling server đè lùi revision làm mất nét
           setView((prev) => {
+            const hasTurnChanged = nextView.turnIndex !== prev.turnIndex;
+            if (hasTurnChanged) {
+              // Chuyển lượt mới hoàn toàn: xóa sạch nét vẽ cũ của người chơi trước
+              return {
+                ...nextView,
+                drawingRevision: nextView.drawingRevision || 0,
+                drawingStrokes: [],
+              };
+            }
+
             const isLocalDrawer = nextView.players.length > 0 &&
               (nextView.turnIndex % nextView.players.length) === session.playerIndex;
-            const isSameTurn = nextView.turnIndex === prevTurnIndexRef.current;
-            const keepLocalDrawing = isLocalDrawer && isSameTurn && prev.drawingStrokes.length > 0;
-            const keepHigherRevision = isSameTurn && prev.drawingRevision > nextView.drawingRevision;
+            // Chỉ giữ nét vẽ cục bộ trong cùng 1 lượt khi Drawer đang vẽ dở mà server chưa kịp nhận (in-flight)
+            const keepLocalDrawing = isLocalDrawer && prev.drawingStrokes.length > 0 && nextView.drawingStrokes.length === 0 && (drawingRevision.current > nextView.drawingRevision);
+            const keepHigherRevision = prev.drawingRevision > nextView.drawingRevision && nextView.drawingStrokes.length > 0;
 
             return {
               ...nextView,
@@ -348,8 +365,18 @@ export default function OnlineRoom({ session, onExit }: Props) {
   );
 
   const handleClearDrawing = useCallback(() => {
+    if (drawingDebounceTimer.current) {
+      clearTimeout(drawingDebounceTimer.current);
+    }
+    pendingStrokesRef.current = null;
     const newRev = drawingRevision.current + 1;
     drawingRevision.current = newRev;
+
+    setView((prev) => ({
+      ...prev,
+      drawingRevision: newRev,
+      drawingStrokes: [],
+    }));
 
     if (p2pManagerRef.current?.isConnected) {
       p2pManagerRef.current.broadcast({

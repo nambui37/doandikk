@@ -202,7 +202,7 @@ function createPlayerToken(): string {
 
 function clearDrawing(room: GameRoom): void {
   room.drawingStrokes = [];
-  room.drawingRevision += 1;
+  room.drawingRevision = Math.max(room.drawingRevision + 1, (room.turnIndex + 1) * 1000);
 }
 
 function expireInactiveRooms(now: number): void {

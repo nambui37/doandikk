@@ -354,10 +354,17 @@ export default function OnlineDrawing({
 
   const prevCanDrawRef = useRef(canDraw);
 
-  // Khi chuyển vai trò (Ví dụ: từ Người đoán chuyển thành Người vẽ lượt mới)
+  // Khi chuyển vai trò (Ví dụ: từ Người đoán chuyển thành Người vẽ lượt mới hoặc ngược lại)
   useEffect(() => {
     if (!prevCanDrawRef.current && canDraw) {
       // Vừa chuyển từ người đoán sang người vẽ: Dọn sạch mọi nét vẽ cũ của người chơi trước
+      localStrokesRef.current = strokes.length > 0 ? [...strokes] : [];
+      undoStackRef.current = [];
+      redoStackRef.current = [];
+      observedRevision.current = revision;
+      renderAll(localStrokesRef.current);
+    } else if (prevCanDrawRef.current && !canDraw) {
+      // Vừa chuyển từ người vẽ sang người đoán: Cập nhật nét vẽ hiện tại
       localStrokesRef.current = strokes.length > 0 ? [...strokes] : [];
       undoStackRef.current = [];
       redoStackRef.current = [];
@@ -372,8 +379,10 @@ export default function OnlineDrawing({
     // 1. Nếu là người vẽ (drawer):
     if (canDraw) {
       // Khi server gửi danh sách nét vẽ rỗng (ví dụ: chuyển vòng mới hoặc bấm Xóa bảng vẽ)
-      // Chỉ reset nếu revision thực sự mới hơn VÀ local strokes đã rỗng (hoặc chưa vẽ gì)
-      if (strokes.length === 0 && revision > observedRevision.current && localStrokesRef.current.length === 0) {
+      if (strokes.length === 0 && revision > observedRevision.current) {
+        localStrokesRef.current = [];
+        undoStackRef.current = [];
+        redoStackRef.current = [];
         observedRevision.current = revision;
         renderAll([]);
         return;
