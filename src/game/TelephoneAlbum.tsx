@@ -268,7 +268,12 @@ export default function TelephoneAlbum({ books, isHost, onRestart, onExit }: Pro
                       </div>
                     ) : (
                       <div className="album-drawing-container">
-                        <StrokeViewer strokes={step.strokes || []} width={700} height={440} />
+                        <StrokeViewer
+                          key={`album-${currentBook?.bookIndex || activeBookIndex}-${step.stepIndex}`}
+                          strokes={step.strokes || []}
+                          width={700}
+                          height={440}
+                        />
                       </div>
                     )}
                   </div>

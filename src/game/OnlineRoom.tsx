@@ -40,6 +40,7 @@ import {
   apiSetGameMode,
   apiSetTelephoneConfig,
   apiTelephoneSubmit,
+  apiTelephoneDraft,
   apiUpdateRoomDrawing,
   apiLeaveRoom,
 } from '../lib/api';
@@ -400,6 +401,15 @@ export default function OnlineRoom({ session, onExit }: Props) {
     }
   };
 
+  // Gửi bản nháp nét vẽ ngầm cho server để chống mất bài vẽ khi hết giờ hoặc ngắt kết nối
+  const handleTelephoneDraft = async (payload: { text?: string; strokes?: DrawingStroke[] }) => {
+    try {
+      await apiTelephoneDraft(roomCode, playerToken, payload);
+    } catch {
+      // ignore
+    }
+  };
+
   // Rời phòng có báo Server để cập nhật số người và kết thúc trận đấu nếu thiếu người
   const handleExitRoom = async () => {
     try {
@@ -665,6 +675,7 @@ export default function OnlineRoom({ session, onExit }: Props) {
           state={view.telephoneState}
           roomCode={roomCode}
           onSubmit={handleTelephoneSubmit}
+          onDraft={handleTelephoneDraft}
         />
       </>
     );

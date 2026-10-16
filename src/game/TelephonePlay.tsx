@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Clock3,
   Dices,
@@ -20,14 +20,24 @@ interface Props {
   state: TelephoneState;
   roomCode: string;
   onSubmit: (payload: { text?: string; strokes?: DrawingStroke[] }) => Promise<void>;
+  onDraft?: (payload: { text?: string; strokes?: DrawingStroke[] }) => void;
 }
 
-export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
+export default function TelephonePlay({ state, roomCode, onSubmit, onDraft }: Props) {
   const [promptText, setPromptText] = useState('');
   const [guessText, setGuessText] = useState('');
   const [currentStrokes, setCurrentStrokes] = useState<DrawingStroke[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localSubmitted, setLocalSubmitted] = useState(false);
+
+  // Ref lưu nét vẽ và text mới nhất tức thì (tránh stale closure và batching delay của React)
+  const latestStrokesRef = useRef<DrawingStroke[]>([]);
+  const promptTextRef = useRef('');
+  const guessTextRef = useRef('');
+  const draftDebounceRef = useRef<any>(null);
+
+  promptTextRef.current = promptText;
+  guessTextRef.current = guessText;
 
   // Reset local state when round changes
   useEffect(() => {
@@ -35,14 +45,29 @@ export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
     setPromptText('');
     setGuessText('');
     setCurrentStrokes([]);
+    latestStrokesRef.current = [];
+    if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current);
   }, [state.round, state.hasSubmitted]);
 
   const hasSubmitted = localSubmitted || state.hasSubmitted;
 
+  // Cập nhật strokes khi người dùng vẽ và tự động gửi draft nháp lên server
+  const handleStrokesChange = (newStrokes: DrawingStroke[]) => {
+    latestStrokesRef.current = newStrokes;
+    setCurrentStrokes(newStrokes);
+
+    if (onDraft) {
+      if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current);
+      draftDebounceRef.current = setTimeout(() => {
+        onDraft({ strokes: newStrokes });
+      }, 1000);
+    }
+  };
+
   // Xử lý nộp câu ban đầu (Phase: prompt)
-  const handlePromptSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = promptText.trim();
+  const handlePromptSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = (promptTextRef.current || promptText).trim();
     if (!clean || isSubmitting || hasSubmitted) return;
 
     setIsSubmitting(true);
@@ -56,12 +81,17 @@ export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
   };
 
   // Xử lý nộp tranh vẽ (Phase: drawing)
-  const handleDrawingSubmit = async () => {
+  const handleDrawingSubmit = async (explicitStrokes?: DrawingStroke[]) => {
     if (isSubmitting || hasSubmitted) return;
+    const strokesToSubmit =
+      Array.isArray(explicitStrokes) && explicitStrokes.length > 0
+        ? explicitStrokes
+        : (latestStrokesRef.current.length > 0 ? latestStrokesRef.current : currentStrokes);
+
     setIsSubmitting(true);
     setLocalSubmitted(true);
     try {
-      await onSubmit({ strokes: currentStrokes });
+      await onSubmit({ strokes: strokesToSubmit });
       confetti({ particleCount: 35, spread: 60 });
     } finally {
       setIsSubmitting(false);
@@ -69,9 +99,9 @@ export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
   };
 
   // Xử lý nộp câu đoán (Phase: guess)
-  const handleGuessSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = guessText.trim();
+  const handleGuessSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = (guessTextRef.current || guessText).trim();
     if (!clean || isSubmitting || hasSubmitted) return;
 
     setIsSubmitting(true);
@@ -83,6 +113,27 @@ export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
       setIsSubmitting(false);
     }
   };
+
+  // TỰ ĐỘNG NỘP BÀI KHI ĐỒNG HỒ ĐẾM NGƯỢC VỀ 0 HOẶC <= 1 GIÂY
+  // Đảm bảo tuyệt đối không bao giờ bị mất bài vẽ hoặc kết quả bị trắng tinh do quên bấm nút
+  useEffect(() => {
+    if (state.timeLeftSeconds <= 1 && !hasSubmitted && !isSubmitting) {
+      if (state.phase === 'drawing') {
+        const strokes = latestStrokesRef.current.length > 0 ? latestStrokesRef.current : currentStrokes;
+        handleDrawingSubmit(strokes);
+      } else if (state.phase === 'prompt') {
+        const text = (promptTextRef.current || promptText).trim() || getRandomPrompt();
+        setIsSubmitting(true);
+        setLocalSubmitted(true);
+        onSubmit({ text }).finally(() => setIsSubmitting(false));
+      } else if (state.phase === 'guess') {
+        const text = (guessTextRef.current || guessText).trim() || 'Một tác phẩm bí ẩn';
+        setIsSubmitting(true);
+        setLocalSubmitted(true);
+        onSubmit({ text }).finally(() => setIsSubmitting(false));
+      }
+    }
+  }, [state.timeLeftSeconds, hasSubmitted, isSubmitting, state.phase]);
 
   const handleRandomPrompt = () => {
     setPromptText(getRandomPrompt());
@@ -204,10 +255,27 @@ export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
                   strokes={currentStrokes}
                   revision={0}
                   canDraw={true}
-                  onChange={(s) => setCurrentStrokes(s)}
-                  onDone={handleDrawingSubmit}
-                  onClearDrawing={() => setCurrentStrokes([])}
+                  onChange={handleStrokesChange}
+                  onDone={(strokes) => handleDrawingSubmit(strokes)}
+                  onClearDrawing={() => {
+                    latestStrokesRef.current = [];
+                    setCurrentStrokes([]);
+                  }}
                 />
+              </div>
+
+              {/* NÚT NỘP TRANH NỔI BẬT DÀNH CHO NGƯỜI CHƠI */}
+              <div className="telephone-drawing-bottom-bar">
+                <button
+                  type="button"
+                  className="telephone-submit-btn drawing-btn"
+                  onClick={() => handleDrawingSubmit()}
+                  disabled={isSubmitting || hasSubmitted}
+                  title="Bấm để nộp tác phẩm của bạn cho người chơi tiếp theo"
+                >
+                  <Send size={18} />
+                  <span>XONG & NỘP BÀI VẼ</span>
+                </button>
               </div>
             </div>
           )}
@@ -222,6 +290,7 @@ export default function TelephonePlay({ state, roomCode, onSubmit }: Props) {
 
               <div className="telephone-preview-canvas-box">
                 <StrokeViewer
+                  key={`guess-prev-${state.round}`}
                   strokes={state.inputDrawingStrokes || []}
                   width={750}
                   height={460}

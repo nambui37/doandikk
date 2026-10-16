@@ -186,7 +186,12 @@ export default function Storybook3D({
                     </div>
                   ) : (
                     <div className="page-drawing-box">
-                      <StrokeViewer strokes={prevStep.strokes || []} width={460} height={320} />
+                      <StrokeViewer
+                        key={`prev-${book.bookIndex}-${currentStepIndex}-${prevStep.stepIndex}`}
+                        strokes={prevStep.strokes || []}
+                        width={460}
+                        height={320}
+                      />
                     </div>
                   )}
                 </div>
@@ -231,7 +236,12 @@ export default function Storybook3D({
                     </div>
                   ) : (
                     <div className="page-drawing-box right-glow">
-                      <StrokeViewer strokes={currentStep.strokes || []} width={480} height={330} />
+                      <StrokeViewer
+                        key={`cur-${book.bookIndex}-${currentStepIndex}-${currentStep.stepIndex}`}
+                        strokes={currentStep.strokes || []}
+                        width={480}
+                        height={330}
+                      />
                     </div>
                   )}
                 </div>

@@ -111,6 +111,14 @@ export async function apiTelephoneSubmit(
   return apiActOnRoom(roomCode, token, 'telephone_submit', payload);
 }
 
+export async function apiTelephoneDraft(
+  roomCode: string,
+  token: string,
+  payload: { text?: string; strokes?: DrawingStroke[] },
+): Promise<void> {
+  apiActOnRoom(roomCode, token, 'telephone_draft', payload).catch(() => {});
+}
+
 export async function apiTelephoneChangeAlbum(
   roomCode: string,
   token: string,

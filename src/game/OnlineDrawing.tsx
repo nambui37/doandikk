@@ -30,7 +30,7 @@ type Props = {
   revision: number;
   canDraw: boolean;
   drawerName?: string;
-  onDone?: () => void;
+  onDone?: (strokes?: DrawingStroke[]) => void;
   onChange?: (strokes: DrawingStroke[]) => void;
   onClearDrawing?: () => void;
 };
@@ -1053,7 +1053,7 @@ export default function OnlineDrawing({
             <button
               type="button"
               className="gartic-done-btn"
-              onClick={onDone}
+              onClick={() => onDone(localStrokesRef.current)}
               title="Bấm khi bạn đã vẽ xong để bạn bè vào đoán ngay lập tức!"
             >
               <CheckCircle2 size={22} className="check-icon" />

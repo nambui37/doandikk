@@ -272,19 +272,24 @@ function advanceTelephoneRound(room: GameRoom, now: number): void {
   const totalRounds = room.telephoneTotalRounds || room.players.length;
   const stepType: TelephoneStepType = currentRound === 0 ? 'prompt' : (currentRound % 2 === 1 ? 'drawing' : 'guess');
 
-  // Điền giá trị mặc định cho những người chưa kịp nộp bài khi hết giờ
+  // Điền giá trị cho những người chưa kịp nộp bài khi hết giờ (sử dụng draftStrokes/draftText nếu có)
   room.players.forEach((player, pIdx) => {
     const bookIndex = (pIdx - currentRound + totalRounds) % totalRounds;
     const book = room.telephoneBooks[bookIndex];
     if (book && !book.steps[currentRound]) {
+      const draftStrokes = Array.isArray(book.draftStrokes) && book.draftStrokes.length > 0 ? book.draftStrokes : [];
+      const draftText = typeof book.draftText === 'string' && book.draftText.trim().length > 0 ? book.draftText.trim() : '';
+
       book.steps[currentRound] = {
         stepIndex: currentRound,
         type: stepType,
         authorName: player.name,
-        text: stepType === 'prompt' ? 'Con mèo bay lượn trên mây' : 'Một điều kỳ thú',
-        strokes: [],
+        text: draftText || (stepType === 'prompt' ? 'Con mèo bay lượn trên mây' : 'Một điều kỳ thú'),
+        strokes: draftStrokes,
         timestamp: now,
       };
+      book.draftStrokes = [];
+      book.draftText = '';
     }
   });
 
@@ -546,7 +551,11 @@ export function performRoomAction(
   const now = Date.now();
   const playerIndex = playerIndexForToken(room, token);
   touchPlayer(room, playerIndex, now);
-  updateRoomClock(room, now);
+
+  // Không tự động chuyển vòng trước khi xử lý nộp bài/lưu nháp để tránh mất nét vẽ khi độ trễ mạng vài giây
+  if (action !== 'telephone_submit' && action !== 'telephone_draft') {
+    updateRoomClock(room, now);
+  }
 
   const drawerIndex = room.players.length > 0 ? room.turnIndex % room.players.length : 0;
   const isDrawer = drawerIndex === playerIndex;
@@ -605,39 +614,95 @@ export function performRoomAction(
       break;
     }
 
+    case 'telephone_draft': {
+      if (room.gameMode !== 'telephone') break;
+      const cRound = room.telephoneRound;
+      const tRounds = room.telephoneTotalRounds || room.players.length;
+      if (cRound < tRounds) {
+        const myBookIdx = (playerIndex - cRound + tRounds) % tRounds;
+        const targetBook = room.telephoneBooks[myBookIdx];
+        if (targetBook) {
+          if (Array.isArray(payload?.strokes)) {
+            targetBook.draftStrokes = payload.strokes;
+          }
+          if (typeof payload?.text === 'string') {
+            targetBook.draftText = payload.text;
+          }
+        }
+      }
+      break;
+    }
+
     case 'telephone_submit': {
       if (room.gameMode !== 'telephone') throw new RoomStoreError(400, 'Phòng không ở chế độ Tam Sao Thất Bản.');
-      if (room.status !== 'playing') throw new RoomStoreError(400, 'Ván chơi chưa bắt đầu.');
+      if (room.status !== 'playing' && room.status !== 'results') throw new RoomStoreError(400, 'Ván chơi chưa bắt đầu.');
 
       const player = room.players[playerIndex];
       const pToken = player.token;
-      if (room.telephoneSubmissions[pToken]) {
-        break; // Đã nộp rồi
+
+      const tRounds = room.telephoneTotalRounds || room.players.length;
+      let targetRound = room.telephoneRound;
+      if (targetRound >= tRounds) {
+        targetRound = tRounds - 1;
       }
 
-      const cRound = room.telephoneRound;
-      const tRounds = room.telephoneTotalRounds || room.players.length;
-      const myBookIdx = (playerIndex - cRound + tRounds) % tRounds;
+      // Nếu vòng hiện tại đã có cờ nộp bài nhưng người chơi vừa nộp nét vẽ muộn hoặc bổ sung bài vẽ vòng trước
+      if (room.telephoneSubmissions[pToken] && targetRound > 0) {
+        const prevRound = targetRound - 1;
+        const prevBookIdx = (playerIndex - prevRound + tRounds) % tRounds;
+        const prevBook = room.telephoneBooks[prevBookIdx];
+        if (
+          prevBook &&
+          prevBook.steps[prevRound] &&
+          (!prevBook.steps[prevRound].strokes || prevBook.steps[prevRound].strokes!.length === 0) &&
+          Array.isArray(payload?.strokes) &&
+          payload.strokes.length > 0
+        ) {
+          prevBook.steps[prevRound].strokes = payload.strokes;
+          break;
+        }
+      }
+
+      const myBookIdx = (playerIndex - targetRound + tRounds) % tRounds;
       const targetBook = room.telephoneBooks[myBookIdx];
 
-      const currentType: TelephoneStepType = cRound === 0 ? 'prompt' : (cRound % 2 === 1 ? 'drawing' : 'guess');
+      const currentType: TelephoneStepType = targetRound === 0 ? 'prompt' : (targetRound % 2 === 1 ? 'drawing' : 'guess');
+      const submittedStrokes = Array.isArray(payload?.strokes) ? payload.strokes : [];
+      const submittedText = (payload?.text || '').trim();
+
       if (targetBook) {
-        targetBook.steps[cRound] = {
-          stepIndex: cRound,
+        const existingStep = targetBook.steps[targetRound];
+        const finalStrokes = submittedStrokes.length > 0
+          ? submittedStrokes
+          : (existingStep?.strokes && existingStep.strokes.length > 0
+              ? existingStep.strokes
+              : (Array.isArray(targetBook.draftStrokes) && targetBook.draftStrokes.length > 0 ? targetBook.draftStrokes : []));
+
+        const finalText = submittedText
+          || (existingStep?.text && existingStep.text !== 'Một điều kỳ thú'
+              ? existingStep.text
+              : (targetBook.draftText || (currentType === 'prompt' ? 'Con mèo bay lượn' : 'Bức vẽ bí ẩn')));
+
+        targetBook.steps[targetRound] = {
+          stepIndex: targetRound,
           type: currentType,
           authorName: player.name,
-          text: (payload?.text || '').trim() || (currentType === 'prompt' ? 'Con mèo bay lượn' : 'Bức vẽ bí ẩn'),
-          strokes: Array.isArray(payload?.strokes) ? payload.strokes : [],
+          text: finalText,
+          strokes: finalStrokes,
           timestamp: now,
         };
+        targetBook.draftStrokes = [];
+        targetBook.draftText = '';
       }
 
       room.telephoneSubmissions[pToken] = true;
 
-      // Nếu tất cả người chơi đã nộp bài, chuyển ngay sang vòng tiếp theo mà không cần chờ hết giờ!
-      const allSubmitted = room.players.every((p) => room.telephoneSubmissions[p.token]);
-      if (allSubmitted) {
-        advanceTelephoneRound(room, now);
+      if (room.status === 'playing') {
+        // Nếu tất cả người chơi đã nộp bài, chuyển ngay sang vòng tiếp theo mà không cần chờ hết giờ!
+        const allSubmitted = room.players.every((p) => room.telephoneSubmissions[p.token]);
+        if (allSubmitted) {
+          advanceTelephoneRound(room, now);
+        }
       }
       break;
     }

@@ -11,6 +11,7 @@ export type RoomAction =
   | 'restart'
   | 'leave'
   | 'telephone_submit'
+  | 'telephone_draft'
   | 'set_game_mode'
   | 'set_telephone_config'
   | 'telephone_change_album';
@@ -69,6 +70,8 @@ export interface TelephoneBook {
   bookIndex: number;
   initialAuthorName: string;
   steps: TelephoneStep[];
+  draftStrokes?: DrawingStroke[];
+  draftText?: string;
 }
 
 export interface TelephoneConfig {
